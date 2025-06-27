@@ -14,3 +14,17 @@ config.py
 backup_export.py
 notifications_config.json
 requirements.txt
+
+
+Remember - Everytime you edit the codeupload this in the root-terminal
+git add .
+git commit -m "💡 Describe what changed"
+git push
+
+To Start - 
+1. python -m hearth.cli.hestia (In Terminal)
+2. ctrl+shift+p --> run task --> run hearth
+
+To end  - 
+1. exit
+2. quit
