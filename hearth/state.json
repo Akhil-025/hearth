@@ -1,0 +1,6 @@
+{
+  "version": "0.1-dev",
+  "last_reflection": null,
+  "plugins_loaded": ["insight", "ritual", "sentience"],
+  "heartbeat_active": true
+}
