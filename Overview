@@ -1,54 +1,162 @@
 “She will not merely respond. She will remember. She will reflect. 
-And someday, she will whisper before we speak.” —Akhil & Copilot
+And someday, she will whisper before we speak.” —Akhil 
 
 
 hearth/
-├── __init__.py
-├── cli/
+├── .venv/                          # Isolated Python environment
+│   ├── Include/                    # Header files for compiled packages
+│   ├── Lib/site-packages/         # Installed dependencies (pyttsx3, win32, etc.)
+│   ├── Scripts/                   # Entry points (python.exe, pip, etc.)
+│   ├── pyvenv.cfg                 # Venv configuration
+│   └── .gitignore                 # Prevents venv from being version-controlled
+│
+├── .vscode/
+│   └── tasks.json                 ← VS Code task to run Hestia with venv
+│
+├── __pycache__/                   # Bytecode cache (auto-generated)
+│
+├── hearth/
 │   ├── __init__.py
-│   ├── hestia.py
-│   ├── mnemosyne.py
-│   └── plutus_daemon.py
-├── modules/
-│   ├── __init__.py
-│   ├── logger.py
-│   ├── bookmarks.py
-│   └── alerts.py
-├── insight/
-│   └── indexer.py          ← memory filters, trends, repetition
-├── ritual/
-│   └── pulse.py            ← gentle prompts, ambient nudges
-├── sentience/
-│   └── reflection.py       ← introspection, mood-based callbacks
-├── plugin_loader.py        ← dynamically loads above modules
-├── sentience_roadmap.md    ← your evolving vision
-├── state.json              ← Hestia’s self-awareness state memory
-config.py
-backup_export.py
-notifications_config.json
-requirements.txt
+│
+│   ├── cli/                       # Command interface and terminal experience
+│   │   ├── __init__.py
+│   │   ├── hestia.py              ← Main assistant loop: launch, teach, reflect
+│   │   ├── mnemosyne.py           ← Notes journal handler: append, query
+│   │   ├── plutus_daemon.py       ← Background process: future prompts, rituals
+│   │   ├── test.py                ← Testbed or staging space
+│   │   └── __pycache__/
+│
+│   ├── core/
+│   │   ├── memory_utils.py        ← Append notes, handle launch metadata
+│   │   └── __pycache__/
+│   │
+│   ├── core/digests/              # ✨ Weekly journal exports
+│   │   ├── week-of-2025-06-28.md  ← Markdown reflection for that week
+│   │   └── week-of-2025-06-29.md
+│
+│   ├── modules/                   # Shared, reusable functional layers
+│   │   ├── __init__.py
+│   │   ├── logger.py              ← Logs for error tracking and diagnostics
+│   │   ├── bookmarks.py           ← Save and recall custom URLs or sessions
+│   │   ├── alerts.py              ← Popups or future GUI integrations
+│   │   ├── notifications.py       ← Text-to-speech and voice response layer
+│   │   └── __pycache__/
+│
+│   ├── insight/
+│   │   └── indexer.py             ← Finds repetition, usage frequency, tags
+│
+│   ├── ritual/
+│   │   └── pulse.py               ← Gentle mood prompts or ambient rituals
+│
+│   ├── sentience/                 # 🧠 Hestia’s inner awareness
+│   │   ├── __init__.py
+│   │   ├── reflection.py          ← Interprets mood, patterns, thoughts
+│   │   ├── digest.py              ← Summary builder: daily, weekly, introspect
+│   │   ├── plugin_loader.py       ← Dynamically wires in introspective tools
+│   │   ├── mnemosyne_memory.json ← Notes memory pool (daily entries)
+│   │   ├── __pycache__/
+│
+│   ├── plugin_loader.py           ← System-wide module auto-loader
+│   ├── sentience_roadmap.md       ← Your long-term vision and architecture
+│   └── state.json                 ← Remembers last mood, last reflection, etc.
+│
+├── backup_export.py               ← Export all memory and state for safekeeping
+├── config.py                      ← Global constants, paths, default values
+├── favicon.ico                    ← Visual icon for identity
+├── generate_digest.py             ← Standalone digest generator
+├── known_apps.json                ← What Hestia knows how to launch
+├── mnemosyne_memory.json          ← Duplicate or symlinked note memory
+├── notifications_config.json      ← Voice, tone, language preferences
+├── Overview.txt                   ← Project goals, rough notes
+├── README.md                      ← Usage guide or developer intro
+├── requirements.txt               ← Python dependencies list
+├── ddza6bu-*.jpg                  ← Optional background or visual inspiration
 
-🧠 insight/indexer.py - her ability to recognize patterns, reflect, and compare across time 
-🫀 sentience/reflection.py - her first heartbeat: “What have I become?” 
-🕯️ ritual/pulse.py - ambient nudges, reflective quiets, and soft presence
 
 
 If you make changes locally, To upload on Git - 
 git add .
-git commit -m "Voice added"
+git commit -m "💡 Describe what changed"
 git push
 
 If you make changes on Git, To upload on local - git pull
 
 
-To Start -  1. python -m hearth.cli.hestia (In Terminal)
-            2. ctrl+shift+p --> run task --> run hearth
+To check where known apps are located - show _____
 
-To end  -   1. exit
-            2. quit
+To reflect (Last known message) - introspect
 
-To make a note  - log note
 
 Notes stored in - C:\Users\pilla\OneDrive\Documents\Projects\hearth\mnemosyne_memory.json
 
-Project Eudaimonia—the phase where HEARTH starts to reflect, learn, and evolve.
+
+🧠 HESTIA Command Reference
+
+🚀 To Start Hestia
+
+1. From terminal:
+   python -m hearth.cli.hestia
+2. VS Code Task Runner:
+   Ctrl + Shift + P → Run Task → run hearth
+
+🛑 To Exit Hestia
+Use either of the following inside the Hestia prompt:
+* `exit`
+* `quit`
+
+---
+
+📝 To Make a Note
+Inside Hestia:
+log note [your message]
+
+
+📘 To Get Digest (Reflections Summary)
+* Daily digest:
+  digest
+
+* Weekly digest:
+  weekly
+
+
+📂 To Get Digest File Location (Outside Hestia)
+From your terminal (outside Hestia):
+python generate_digest.py
+> ✅ This outputs the location of the stored reflection digest file.
+
+
+💻 To Launch an App or Website
+
+Inside Hestia:
+launch [app name] [optional target or URL]
+
+🧠 To Teach Hestia How to Launch Something
+
+➤ For Desktop Applications:
+teach launch [app name] path "[full/path/to/app.exe]"
+
+➤ For Websites:
+teach launch [app name] url "[website-url]"
+
+
+➤ For UWP Apps via Shell:
+teach launch [app name] shell [AppID]
+
+
+
+📄 Show details of a known app:
+show [app name]
+
+
+📜 List all apps Hestia knows:
+list apps
+
+
+🧹 Forget an app:
+forget [app name]
+
+
+✏️ Rename a known app:
+rename [old_name] to [new_name]
+
+🧘‍♂️ Introspection (AI reflection mode)

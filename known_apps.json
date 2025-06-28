@@ -1,0 +1,80 @@
+{
+  "twitch": {
+    "mode": "path",
+    "path": "\"C:/Program",
+    "args": [
+      "Files",
+      "(x86)/Google/Chrome/Application/chrome.exe\"",
+      "https://twitch.tv"
+    ]
+  },
+  "chrome": {
+    "mode": "path",
+    "path": "C:/Program Files/Google/Chrome/Application/chrome.exe",
+    "args": []
+  },
+  "youtube": {
+    "mode": "path",
+    "path": "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
+    "args": [
+      "https://www.youtube.com"
+    ]
+  },
+  "wps": {
+    "mode": "shell",
+    "path": "cmd",
+    "args": [
+      "/c",
+      "start",
+      "",
+      "shell:AppsFolder\\ZhuhaiKingsoftOfficeSoftw.WPSOffice2019_924xes6e8q1tw!WPSOffice2019"
+    ]
+  },
+  "notepad": {
+    "mode": "shell",
+    "path": "C:/Windows/System32/notepad.exe",
+    "args": []
+  },
+  "calculator": {
+    "mode": "shell",
+    "path": "C:/Windows/System32/calc.exe",
+    "args": []
+  },
+  "autocad": {
+    "mode": "shell",
+    "path": "C:/Program Files/Autodesk/AutoCAD 2024/acad.exe",
+    "args": []
+  },
+  "edge": {
+    "mode": "path",
+    "path": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+    "args": []
+  },
+  "reddit": {
+    "mode": "path",
+    "path": "C:/Program Files/Google/Chrome/Application/chrome.exe",
+    "args": [
+      "https://www.reddit.com"
+    ],
+    "last_launched": "2025-06-29T00:58:53.372894"
+  },
+  "gmail": {
+    "mode": "path",
+    "path": "C:/Program Files/Google/Chrome/Application/chrome.exe",
+    "args": [
+      "https://www.gmail.com"
+    ]
+  },
+  "ao3": {
+    "mode": "path",
+    "path": "C:/Program Files/Google/Chrome/Application/chrome.exe",
+    "args": [
+      "https://archiveofourown.org/"
+    ]
+  },
+  "vsc": {
+    "mode": "shell",
+    "path": "C:/Users/pilla/AppData/Local/Programs/Microsoft VS Code/Code.exe",
+    "args": []
+  }
+}
