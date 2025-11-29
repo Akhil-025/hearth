@@ -11,14 +11,16 @@
   "chrome": {
     "mode": "path",
     "path": "C:/Program Files/Google/Chrome/Application/chrome.exe",
-    "args": []
+    "args": [],
+    "last_launched": "2025-06-29T13:13:11.293140"
   },
   "youtube": {
     "mode": "path",
     "path": "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
     "args": [
       "https://www.youtube.com"
-    ]
+    ],
+    "last_launched": "2025-07-06T20:35:03.622758"
   },
   "wps": {
     "mode": "shell",
@@ -76,5 +78,43 @@
     "mode": "shell",
     "path": "C:/Users/pilla/AppData/Local/Programs/Microsoft VS Code/Code.exe",
     "args": []
+  },
+  "revo": {
+    "mode": "shell",
+    "path": "D:\\Revo Uninstaller\\RevoUnin.exe",
+    "args": [],
+    "last_launched": "2025-06-29T23:39:14.447138"
+  },
+  "chatgpt": {
+    "mode": "path",
+    "path": "C:/Program Files/Google/Chrome/Application/chrome.exe",
+    "args": [
+      "https://chatgpt.com/"
+    ],
+    "last_launched": "2025-07-11T19:24:19.992322"
+  },
+  "scholar": {
+    "mode": "path",
+    "path": "C:/Program Files/Google/Chrome/Application/chrome.exe",
+    "args": [
+      "https://scholar.google.com/"
+    ],
+    "last_launched": "2025-07-06T18:43:19.608649"
+  },
+  "instagram": {
+    "mode": "path",
+    "path": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+    "args": [
+      "https://www.instagram.com/"
+    ],
+    "last_launched": "2025-07-06T18:52:32.379400"
+  },
+  "scihub": {
+    "mode": "path",
+    "path": "C:/Program Files/Google/Chrome/Application/chrome.exe",
+    "args": [
+      "https://sci-hub.se/"
+    ],
+    "last_launched": "2025-07-06T18:50:08.878423"
   }
 }

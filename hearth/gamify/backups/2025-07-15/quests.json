@@ -1,0 +1,42 @@
+{
+  "daily": [
+    {
+      "name": "Drink 2L Water",
+      "xp": 5,
+      "stat": "Vitalis",
+      "done": false
+    },
+    {
+      "name": "Read 10 Pages",
+      "xp": 7,
+      "stat": "Sophia",
+      "done": false
+    },
+    {
+      "name": "Log Mood",
+      "xp": 4,
+      "stat": "Daemonia",
+      "done": false
+    }
+  ],
+  "weekly": [
+    {
+      "name": "Invest in Market",
+      "xp": 15,
+      "stat": "Fortuna",
+      "done": false
+    },
+    {
+      "name": "Write Reflection",
+      "xp": 10,
+      "stat": "Echocraft",
+      "done": false
+    },
+    {
+      "name": "Workout 3 Times",
+      "xp": 12,
+      "stat": "Ignis Stamina",
+      "done": false
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "core": {
+    "Vitalis": 0.5,
+    "Fortuna": 0.3,
+    "Sophia": 0.7,
+    "Charis": 0.4,
+    "Daemonia": 0.6,
+    "Arete": 0.5
+  },
+  "skills": {
+    "Aetherlink": 0.8,
+    "Chronosurge": 1.0,
+    "Argentum Tact": 0.6,
+    "Ignis Stamina": 1.2,
+    "Echocraft": 0.9,
+    "Kyros Gaze": 0.5,
+    "Nyx Veil": 0.7
+  }
+}

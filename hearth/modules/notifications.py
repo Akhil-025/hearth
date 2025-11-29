@@ -1,4 +1,5 @@
 import pyttsx3
+import winsound  # Windows only
 
 VOICE_PROFILE = {
     "default": 1,      # Replace with the voice index you liked (e.g., Microsoft Zira)
@@ -14,3 +15,10 @@ def speak(text, mode="default"):
     engine.setProperty('rate', 160)
     engine.say(text)
     engine.runAndWait()
+
+
+def chime_on_success():
+    try:
+        winsound.MessageBeep(winsound.MB_ICONASTERISK)
+    except:
+        pass

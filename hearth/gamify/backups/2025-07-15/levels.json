@@ -1,0 +1,37 @@
+[
+  {
+    "level": 1,
+    "xp_required": 0,
+    "title": "Flameborn Acolyte",
+    "perks": ["Habit tracking enabled"],
+    "stat_caps": {"Vitalis": 50, "Fortuna": 50, "Sophia": 50, "Charis": 50, "Daemonia": 50, "Arete": 50}
+  },
+  {
+    "level": 2,
+    "xp_required": 120,
+    "title": "Scribe of Mnemosyne",
+    "perks": ["Mood tracking unlocked", "Journaling synergy bonuses"],
+    "stat_caps": {"Vitalis": 60, "Fortuna": 60, "Sophia": 60, "Charis": 60, "Daemonia": 60, "Arete": 60}
+  },
+  {
+    "level": 3,
+    "xp_required": 280,
+    "title": "Initiate of Plutus",
+    "perks": ["Wealth quests unlocked", "Argentum Tact XP tracking"],
+    "stat_caps": {"Vitalis": 65, "Fortuna": 70, "Sophia": 70, "Charis": 65, "Daemonia": 65, "Arete": 70}
+  },
+  {
+    "level": 4,
+    "xp_required": 500,
+    "title": "Disciple of Chronos",
+    "perks": ["Time rituals unlocked", "Chronosurge XP tracking"],
+    "stat_caps": {"Vitalis": 70, "Fortuna": 75, "Sophia": 75, "Charis": 70, "Daemonia": 75, "Arete": 75}
+  },
+  {
+    "level": 5,
+    "xp_required": 800,
+    "title": "Seeker of Aetherion",
+    "perks": ["Skill synergy unlocked", "Combo XP blending"],
+    "stat_caps": {"Vitalis": 80, "Fortuna": 80, "Sophia": 85, "Charis": 75, "Daemonia": 85, "Arete": 85}
+  }
+]

@@ -1,0 +1,10 @@
+{
+  "crypto": {
+    "bitcoin": 6000000.0
+  },
+  "stocks": {
+    "^NSEI": 24000.0,
+    "RELIANCE.NS": 3000.0,
+    "RELIANCE.BO": 3000.0
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "xp": 0,
+  "level": 1,
+  "next_level": 120,
+  "core": {
+    "Vitalis": 20,
+    "Fortuna": 15,
+    "Sophia": 25,
+    "Charis": 18,
+    "Daemonia": 22,
+    "Arete": 24
+  },
+  "skills": {
+    "Aetherlink": 10,
+    "Chronosurge": 12,
+    "Argentum Tact": 8,
+    "Ignis Stamina": 9,
+    "Echocraft": 11,
+    "Kyros Gaze": 7,
+    "Nyx Veil": 10
+  },
+  "last_updated": "2025-07-15"
+}

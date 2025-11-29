@@ -1,0 +1,114 @@
+[
+  {
+    "command": "alerts: add...",
+    "description": "[dynamic subcommand]"
+  },
+  {
+    "command": "alerts: check",
+    "description": "TODO: Add description."
+  },
+  {
+    "command": "alerts: clear",
+    "description": "TODO: Add description."
+  },
+  {
+    "command": "alerts: list",
+    "description": "TODO: Add description."
+  },
+  {
+    "command": "alerts: show-prices",
+    "description": "TODO: Add description."
+  },
+  {
+    "command": "backup: ...",
+    "description": "Manage backups (tag, restore, encrypt)."
+  },
+  {
+    "command": "complete quest ...",
+    "description": "Finish a quest and earn XP."
+  },
+  {
+    "command": "daily ritual",
+    "description": "Run decay + quests for the day."
+  },
+  {
+    "command": "decay",
+    "description": "Trigger XP decay manually or via daily ritual."
+  },
+  {
+    "command": "decay now",
+    "description": "Apply XP/stat decay based on time."
+  },
+  {
+    "command": "echo test",
+    "description": "Debug command."
+  },
+  {
+    "command": "forget ...",
+    "description": "Make Hestia forget a known app."
+  },
+  {
+    "command": "introspect",
+    "description": "AI reflection based on memory logs."
+  },
+  {
+    "command": "launch ...",
+    "description": "Launch a known app or website."
+  },
+  {
+    "command": "level up?",
+    "description": "Show current level, XP, and perks."
+  },
+  {
+    "command": "log note ...",
+    "description": "Save a memory entry to Mnemosyne."
+  },
+  {
+    "command": "log wealth ...",
+    "description": "Log income and gain XP."
+  },
+  {
+    "command": "mnemo: ...",
+    "description": "Run memory upgrades, cleanups, or streak queries."
+  },
+  {
+    "command": "quest: ...",
+    "description": "Manage your quests (view, reset, complete)."
+  },
+  {
+    "command": "rename ...",
+    "description": "Rename a known app in memory."
+  },
+  {
+    "command": "reset quests ...",
+    "description": "Reset all daily or weekly quests."
+  },
+  {
+    "command": "show ...",
+    "description": "View saved details of an app."
+  },
+  {
+    "command": "show quests",
+    "description": "List all current quests."
+  },
+  {
+    "command": "skills",
+    "description": "List XP of all skill stats."
+  },
+  {
+    "command": "status",
+    "description": "Show current XP and stat bars."
+  },
+  {
+    "command": "teach launch ...",
+    "description": "Teach Hestia how to launch something."
+  },
+  {
+    "command": "track ...",
+    "description": "Add XP to stats via a simple syntax."
+  },
+  {
+    "command": "track: ...",
+    "description": "Add XP to skills or stats, or view status."
+  }
+]

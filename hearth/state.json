@@ -1,6 +1,12 @@
 {
   "version": "0.1-dev",
   "last_reflection": null,
-  "plugins_loaded": ["insight", "ritual", "sentience"],
-  "heartbeat_active": true
+  "plugins_loaded": [
+    "insight",
+    "ritual",
+    "sentience"
+  ],
+  "heartbeat_active": true,
+  "last_journaled": "2025-07-16",
+  "journal_streak": 1
 }

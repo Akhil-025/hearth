@@ -1,0 +1,110 @@
+[
+  {
+    "command": "backup: ...",
+    "date": "2025-07-16",
+    "type": "added",
+    "desc": "Manage backups (tag, restore, encrypt)."
+  },
+  {
+    "command": "complete quest ...",
+    "date": "2025-07-16",
+    "type": "added",
+    "desc": "Finish a quest and earn XP."
+  },
+  {
+    "command": "daily ritual",
+    "date": "2025-07-16",
+    "type": "added",
+    "desc": "Run decay + quests for the day."
+  },
+  {
+    "command": "decay",
+    "date": "2025-07-16",
+    "type": "added",
+    "desc": "Miscellaneous or user-defined command."
+  },
+  {
+    "command": "decay now",
+    "date": "2025-07-16",
+    "type": "added",
+    "desc": "Apply XP/stat decay based on time."
+  },
+  {
+    "command": "echo test",
+    "date": "2025-07-16",
+    "type": "added",
+    "desc": "Debug command."
+  },
+  {
+    "command": "introspect",
+    "date": "2025-07-16",
+    "type": "added",
+    "desc": "AI reflection based on memory logs."
+  },
+  {
+    "command": "level up?",
+    "date": "2025-07-16",
+    "type": "added",
+    "desc": "Show current level, XP, and perks."
+  },
+  {
+    "command": "log note ...",
+    "date": "2025-07-16",
+    "type": "added",
+    "desc": "Save a memory entry to Mnemosyne."
+  },
+  {
+    "command": "log wealth ...",
+    "date": "2025-07-16",
+    "type": "added",
+    "desc": "Log income and gain XP."
+  },
+  {
+    "command": "mnemo: ...",
+    "date": "2025-07-16",
+    "type": "added",
+    "desc": "Miscellaneous or user-defined command."
+  },
+  {
+    "command": "quest: ...",
+    "date": "2025-07-16",
+    "type": "added",
+    "desc": "Manage your quests (view, reset, complete)."
+  },
+  {
+    "command": "reset quests ...",
+    "date": "2025-07-16",
+    "type": "added",
+    "desc": "Reset all daily or weekly quests."
+  },
+  {
+    "command": "show quests",
+    "date": "2025-07-16",
+    "type": "added",
+    "desc": "List all current quests."
+  },
+  {
+    "command": "skills",
+    "date": "2025-07-16",
+    "type": "added",
+    "desc": "List XP of all skill stats."
+  },
+  {
+    "command": "status",
+    "date": "2025-07-16",
+    "type": "added",
+    "desc": "Show current XP and stat bars."
+  },
+  {
+    "command": "track ...",
+    "date": "2025-07-16",
+    "type": "added",
+    "desc": "Miscellaneous or user-defined command."
+  },
+  {
+    "command": "track: ...",
+    "date": "2025-07-16",
+    "type": "added",
+    "desc": "Add XP to skills or stats, or view status."
+  }
+]
