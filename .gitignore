@@ -1,0 +1,19 @@
+# Python virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+*.log
+*.out
+*.dat
+*.csv
+*.vtk
+*.vtu
+*.h5
+*.mat
+__pycache__/
+.env
+build/
+dist/
+*.exe
