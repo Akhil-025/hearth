@@ -281,3 +281,37 @@ class OllamaClient:
         if not self.available_models:
             await self._refresh_available_models()
         return self.available_models.copy()
+    # ADDED: Simplified wrapper method for HestiaAgent
+    async def generate_simple(
+        self,
+        prompt: str,
+        context: str = "",
+        intent: str = "",
+        model: str = "llama2:7b",
+        temperature: float = 0.7
+    ) -> LLMResponse:
+        """
+        Simplified generate method for agent calls.
+        
+        Wraps generate() with simple string parameters.
+        """
+        # Build full prompt with context
+        full_prompt = prompt
+        if context:
+            full_prompt = f"Context:\n{context}\n\nUser: {prompt}"
+        
+        # Build system prompt with intent hint
+        system_prompt = self.system_prompt
+        if intent:
+            system_prompt += f"\n\nDetected user intent: {intent}"
+        
+        # Create request
+        request = LLMRequest(
+            prompt=full_prompt,
+            system_prompt=system_prompt,
+            model=model,
+            temperature=temperature
+        )
+        
+        # Use the main generate method
+        return await self.generate(request)
