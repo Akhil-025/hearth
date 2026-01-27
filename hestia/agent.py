@@ -27,6 +27,7 @@ from pydantic import BaseModel, Field
 # from .action_router import ActionRouter
 # from .domain_router import DomainRouter
 
+from athena.retriever import AthenaRetriever
 from .intent_classifier import IntentClassifier
 from .ollama_client import OllamaClient
 
@@ -59,6 +60,7 @@ class HestiaAgent:
         self.intent_classifier = IntentClassifier()
         self.enable_llm = config.get("enable_llm", False)
         self.enable_memory = config.get("enable_memory", False)
+        self.enable_athena = config.get("enable_athena", True)
         
         # Optional LLM client
         self.llm_client: Optional[OllamaClient] = None
@@ -76,6 +78,11 @@ class HestiaAgent:
             self.memory_store = MemoryStore(
                 db_path=config.get("memory_db_path", "./data/memory.db")
             )
+
+        # Optional knowledge retriever (read-only)
+        self.knowledge_retriever: Optional[AthenaRetriever] = None
+        if self.enable_athena:
+            self.knowledge_retriever = AthenaRetriever()
         
         self._llm_initialized = False
     
@@ -109,8 +116,9 @@ class HestiaAgent:
         Flow:
         1. Classify intent (keyword matching)
         2. If intent is memory_query: Retrieve and format memories (NO LLM)
-        3. Else if LLM enabled: Generate LLM response
-        4. Else: Generate deterministic response
+        3. If intent is knowledge_query: Run Athena lookup (NO LLM)
+        4. Else if LLM enabled: Generate LLM response
+        5. Else: Generate deterministic response
         
         Args:
             user_input: Raw text input from user
@@ -126,6 +134,15 @@ class HestiaAgent:
         # Handle explicit memory query (NEVER goes through LLM)
         if intent == "memory_query":
             response_text = self._handle_memory_query()
+            return AgentResponse(
+                text=response_text,
+                intent=intent,
+                confidence=confidence
+            )
+
+        # Handle explicit knowledge query (NO LLM, read-only lookup)
+        if intent == "knowledge_query":
+            response_text = self._handle_knowledge_query(user_input)
             return AgentResponse(
                 text=response_text,
                 intent=intent,
@@ -222,6 +239,32 @@ class HestiaAgent:
             
         except Exception as e:
             return f"Error retrieving memories: {e}"
+
+    def _extract_knowledge_query(self, user_input: str) -> str:
+        """Extract the search string after the trigger phrase."""
+        text_lower = user_input.lower()
+        for pattern in getattr(self.intent_classifier, "knowledge_patterns", []):
+            if pattern in text_lower:
+                return user_input.lower().split(pattern, 1)[-1].strip() or user_input
+        return user_input
+
+    def _handle_knowledge_query(self, user_input: str) -> str:
+        """Handle explicit user request to search knowledge (NO LLM)."""
+        if not self.knowledge_retriever:
+            return "Knowledge retrieval is disabled."
+
+        query = self._extract_knowledge_query(user_input)
+        results = self.knowledge_retriever.search(query, limit=5)
+
+        if not results:
+            return "I don't have any knowledge entries matching that."
+
+        lines = ["Found knowledge entries:"]
+        for idx, item in enumerate(results, 1):
+            lines.append(f"  {idx}. {item['title']}")
+            lines.append(f"     Excerpt: {item['excerpt']}")
+
+        return "\n".join(lines)
     
     def should_offer_memory(self, user_input: str, intent: str) -> bool:
         """
@@ -232,8 +275,8 @@ class HestiaAgent:
         if not self.enable_memory:
             return False
         
-        # NEVER offer to remember memory queries themselves
-        if intent == "memory_query":
+        # NEVER offer to remember memory or knowledge queries themselves
+        if intent in ["memory_query", "knowledge_query"]:
             return False
         
         # Don't remember greetings or help requests

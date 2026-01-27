@@ -40,6 +40,18 @@ class IntentClassifier:
             "show my recent memories",
             "recent memories"
         ]
+
+        # Knowledge query patterns (explicit user requests)
+        self.knowledge_patterns = [
+            "search my knowledge for",
+            "look up in my knowledge base",
+            "find documents about",
+            "what notes do i have on",
+            "search my knowledge base",
+            "search knowledge for",
+            "search knowledge base",
+            "find knowledge about"
+        ]
     
     async def classify(self, text: str) -> Dict[str, Any]:
         """
@@ -55,6 +67,15 @@ class IntentClassifier:
             if pattern in text_lower:
                 return {
                     "intent": "memory_query",
+                    "confidence": 0.9,
+                    "method": "pattern_match"
+                }
+
+        # Check for explicit knowledge search patterns
+        for pattern in self.knowledge_patterns:
+            if pattern in text_lower:
+                return {
+                    "intent": "knowledge_query",
                     "confidence": 0.9,
                     "method": "pattern_match"
                 }
