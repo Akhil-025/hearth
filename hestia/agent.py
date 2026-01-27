@@ -16,7 +16,7 @@ DISABLED IN v0.1:
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
@@ -30,6 +30,13 @@ from pydantic import BaseModel, Field
 from athena.retriever import AthenaRetriever
 from .intent_classifier import IntentClassifier
 from .ollama_client import OllamaClient
+
+
+# Context Bounds for LLM Safety and Transparency
+MAX_MEMORY_ITEMS = 5  # Max memories to inject
+MAX_MEMORY_CHARS = 2000  # Max total characters for memory block
+MAX_LLM_CONTEXT_CHARS = 8000  # Max prompt size before user warning
+EXCERPT_MAX_CHARS = 200  # Max chars per memory or knowledge excerpt
 
 
 class AgentResponse(BaseModel):
@@ -177,15 +184,21 @@ class HestiaAgent:
         ]
         return any(trigger in text for trigger in triggers)
 
-    def get_contextual_memory(self, limit: int = 5) -> Optional[str]:
-        """Return formatted memory block for LLM context (most recent first)."""
+    def get_contextual_memory(self, limit: int = MAX_MEMORY_ITEMS) -> Tuple[Optional[str], bool]:
+        """Return formatted memory block for LLM context with truncation tracking.
+        
+        Returns:
+            (memory_block, was_truncated) where was_truncated indicates if memories or characters were capped
+        """
         if not self.memory_store:
-            return None
+            return None, False
 
         try:
+            # Cap by item count
+            limit = min(limit, MAX_MEMORY_ITEMS)
             memories = self.memory_store.get_recent(count=limit)
             if not memories:
-                return None
+                return None, False
 
             lines = [
                 "The following are notes the user explicitly asked you to consider.",
@@ -193,15 +206,34 @@ class HestiaAgent:
                 ""
             ]
 
+            total_chars = sum(len(line) for line in lines)
+            truncated = False
+            included_count = 0
+
             for i, memory in enumerate(memories, 1):
                 timestamp = memory.timestamp[:19]
-                lines.append(f"{i}. [{timestamp}] {memory.content}")
-
-            return "\n".join(lines)
+                line = f"{i}. [{timestamp}] {memory.content}"
+                line_chars = len(line) + 1  # +1 for newline
+                
+                # Check if adding this memory would exceed character limit
+                if total_chars + line_chars > MAX_MEMORY_CHARS:
+                    truncated = True
+                    break
+                
+                lines.append(line)
+                total_chars += line_chars
+                included_count += 1
+            
+            # Check if we had to skip memories
+            if included_count < len(memories):
+                truncated = True
+                lines.append(f"\n[Note: Showing {included_count} of {len(memories)} memories due to size limits]")
+            
+            return "\n".join(lines), truncated
 
         except Exception:
             # Fail closed: if memory retrieval fails, do not inject anything
-            return None
+            return None, False
     
     def _handle_memory_query(self) -> str:
         """
@@ -328,25 +360,44 @@ class HestiaAgent:
             return False
     
     async def _generate_llm_response(self, intent: str, user_input: str) -> str:
-        """Generate response using LLM."""
+        """Generate response using LLM with strict context bounds and transparency."""
         if not self.llm_client:
             return self._generate_deterministic_response(intent, user_input)
         
         # Construct system prompt based on intent
         system_prompt = self._build_system_prompt(intent)
         prompt = user_input
+        truncation_notice = ""
 
         # Only inject memory when explicitly requested
         if self.should_use_memory_for_context(user_input):
-            memory_context = self.get_contextual_memory(limit=5)
+            memory_context, was_truncated = self.get_contextual_memory(limit=MAX_MEMORY_ITEMS)
             if memory_context:
                 prompt = f"{memory_context}\n\nUser request: {user_input}"
+                if was_truncated:
+                    truncation_notice = "\n[Note: Memory context was truncated to fit size limits.]"
+        
+        # Enforce total context size limit with transparency
+        prompt_size = len(prompt) + len(system_prompt)
+        if prompt_size > MAX_LLM_CONTEXT_CHARS:
+            # Notify user that context is being bounded
+            truncation_notice += f"\n[Note: Context size ({prompt_size} chars) exceeds safe limit ({MAX_LLM_CONTEXT_CHARS} chars). Limiting prompt.]"
+            # Truncate user request if necessary (preserve system context)
+            max_user_size = MAX_LLM_CONTEXT_CHARS - len(system_prompt) - 100
+            if "User request:" in prompt:
+                prefix, user_part = prompt.rsplit("User request:", 1)
+                prompt = prefix + "User request:" + user_part[:max_user_size]
+            else:
+                prompt = prompt[:max_user_size]
         
         try:
             response = await self.llm_client.generate(
                 prompt=prompt,
                 system_prompt=system_prompt
             )
+            # Append truncation notice if context was limited
+            if truncation_notice:
+                response += truncation_notice
             return response
             
         except Exception as e:

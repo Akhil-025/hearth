@@ -1,0 +1,16 @@
+[
+  {
+    "id": "48502abd-2da5-4aa5-8b98-641a9f4ce1fe",
+    "title": "Test Item 1",
+    "content": "This is a test about heat transfer and thermodynamics.",
+    "source": "manual_import",
+    "timestamp": "2026-01-27T23:51:43.587020"
+  },
+  {
+    "id": "f11b3073-021a-4685-a3ba-a5a47b189fc3",
+    "title": "Test Item 2",
+    "content": "Another test document for knowledge retrieval.",
+    "source": "manual_import",
+    "timestamp": "2026-01-27T23:51:43.587020"
+  }
+]
