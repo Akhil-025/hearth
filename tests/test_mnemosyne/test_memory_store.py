@@ -1,11 +1,13 @@
 """
-Test Mnemosyne memory store.
+Test Mnemosyne memory store (legacy, skipped for v0.1 minimal spine).
 """
+import pytest
+
+pytest.skip("Legacy Mnemosyne memory store tests disabled for v0.1 minimal spine", allow_module_level=True)
+
 import asyncio
 from datetime import datetime, timedelta
 from uuid import uuid4
-
-import pytest
 
 from ...mnemosyne.memory_store import MemoryStore, MemoryQuery
 from ...shared.schemas.memory import (

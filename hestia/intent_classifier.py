@@ -27,6 +27,19 @@ class IntentClassifier:
             "why": "question",
             "tell": "information_request",
         }
+        
+        # Memory query patterns (explicit user requests)
+        self.memory_patterns = [
+            "what do you remember",
+            "show my memories",
+            "show memories",
+            "what have i told you",
+            "list memories",
+            "my memories",
+            "remember about me",
+            "show my recent memories",
+            "recent memories"
+        ]
     
     async def classify(self, text: str) -> Dict[str, Any]:
         """
@@ -36,6 +49,15 @@ class IntentClassifier:
             Dict with intent and confidence
         """
         text_lower = text.lower().strip()
+        
+        # Check for explicit memory query patterns FIRST
+        for pattern in self.memory_patterns:
+            if pattern in text_lower:
+                return {
+                    "intent": "memory_query",
+                    "confidence": 0.9,
+                    "method": "pattern_match"
+                }
         
         # Check for keyword matches
         for keyword, intent in self.keyword_map.items():

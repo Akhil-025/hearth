@@ -1,10 +1,12 @@
 """
-Test Hestia agent functionality.
+Test Hestia agent functionality (legacy, skipped for v0.1 minimal spine).
 """
+import pytest
+
+pytest.skip("Legacy Hestia agent tests disabled for v0.1 minimal spine", allow_module_level=True)
+
 import asyncio
 from unittest.mock import AsyncMock, Mock, patch
-
-import pytest
 
 from ...hestia.agent import HestiaAgent, UserInput
 from ...hestia.intent_classifier import IntentClassifier

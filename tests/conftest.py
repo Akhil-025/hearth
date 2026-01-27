@@ -2,18 +2,27 @@
 Test configuration and fixtures.
 """
 import asyncio
+import sys
 import tempfile
 from pathlib import Path
 from typing import AsyncGenerator, Generator
 
 import pytest
 import pytest_asyncio
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
-from ..core.kernel import HearthKernel, KernelConfig
-from ..hestia.agent import HestiaAgent
-from ..mnemosyne.memory_store import MemoryStore
-from ..shared.logging.structured_logger import StructuredLogger
+# Add project root to sys.path for absolute imports in v0.1 minimal spine
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from core.kernel import HearthKernel, KernelConfig
+from hestia.agent import HestiaAgent
+from mnemosyne.memory_store import MemoryStore
+
+
+class StructuredLogger:  # Minimal stub for v0.1 tests
+    def __init__(self, *_args, **_kwargs):
+        pass
 
 
 # Configure logging for tests

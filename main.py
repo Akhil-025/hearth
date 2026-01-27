@@ -18,12 +18,23 @@ from hestia.agent import HestiaAgent
 
 class HearthApplication:
     """
-    Minimal CLI application - accepts one input, produces one output, exits.
+    CLI application with optional LLM reasoning and memory.
+    
+    Config:
+    - enable_llm: Enable Ollama-based reasoning (default: False)
+    - enable_memory: Enable append-only memory with user confirmation (default: False)
     """
     
-    def __init__(self, config_path: Optional[str] = None):
+    def __init__(
+        self,
+        config_path: Optional[str] = None,
+        enable_llm: bool = False,
+        enable_memory: bool = False
+    ):
         self.kernel: Optional[HearthKernel] = None
         self.agent: Optional[HestiaAgent] = None
+        self.enable_llm = enable_llm
+        self.enable_memory = enable_memory
     
     def load_configuration(self) -> KernelConfig:
         """Load minimal hardcoded configuration."""
@@ -38,17 +49,39 @@ class HearthApplication:
         """Initialize minimal execution spine."""
         config = self.load_configuration()
         self.kernel = HearthKernel(config)
-        self.agent = HestiaAgent()
         
-        # DISABLED IN v0.1 — no service registration, memory, domains
+        # Create agent with optional LLM and memory
+        agent_config = {
+            "enable_llm": self.enable_llm,
+            "enable_memory": self.enable_memory
+        }
+        self.agent = HestiaAgent(agent_config)
+        
+        # Initialize agent (will setup LLM if enabled)
+        await self.agent.initialize()
+        
+        # DISABLED IN v0.1 — no service registration, domains
         # await self.kernel.register_service(self.agent)
     
     async def process_input(self, user_input: str) -> str:
-        """Process one input through Hestia."""
+        """Process one input through Hestia, with optional memory confirmation."""
         if not self.agent:
             return "ERROR: Agent not initialized"
         
+        # Get response
         response = await self.agent.process(user_input)
+        
+        # Check if we should offer to remember this
+        if self.agent.should_offer_memory(user_input, response.intent):
+            if self.agent.prompt_memory_confirmation(user_input):
+                if self.agent.save_memory(user_input, response.intent):
+                    print("Memory saved.")
+                    response.memory_saved = True
+                else:
+                    print("Failed to save memory.")
+            else:
+                print("Okay, I won't save it.")
+        
         return response.text
     
     async def run_once(self) -> int:
@@ -56,7 +89,15 @@ class HearthApplication:
         try:
             await self.initialize()
             
-            print("HEARTH v0.1 - Minimal Execution Spine")
+            # Build mode description
+            modes = []
+            if self.enable_llm:
+                modes.append("LLM")
+            if self.enable_memory:
+                modes.append("Memory")
+            mode = " + ".join(modes) if modes else "deterministic"
+            
+            print(f"HEARTH v0.1 - Minimal Execution Spine ({mode})")
             print("Enter input: ", end="", flush=True)
             user_input = input()
             
@@ -77,12 +118,34 @@ class HearthApplication:
             import traceback
             traceback.print_exc()
             return 1
+        finally:
+            await self.cleanup()
+    
+    async def cleanup(self) -> None:
+        """Cleanup resources."""
+        if self.agent:
+            await self.agent.cleanup()
 
 
 def main() -> int:
-    """Main entry point - minimal CLI."""
-    # DISABLED IN v0.1 — domain listing, testing, configuration
-    app = HearthApplication()
+    """Main entry point - minimal CLI with optional LLM and memory."""
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="HEARTH v0.1 - Minimal Execution Spine")
+    parser.add_argument(
+        "--llm",
+        action="store_true",
+        help="Enable LLM reasoning via Ollama (requires Ollama running)"
+    )
+    parser.add_argument(
+        "--memory",
+        action="store_true",
+        help="Enable append-only memory with user confirmation"
+    )
+    
+    args = parser.parse_args()
+    
+    app = HearthApplication(enable_llm=args.llm, enable_memory=args.memory)
     return asyncio.run(app.run_once())
 
 
