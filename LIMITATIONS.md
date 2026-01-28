@@ -1,5 +1,31 @@
 # HEARTH Limitations & Adversarial Test Findings
 
+## Stage 2: Context Engine & Pipeline Executor
+
+### LIMITATION-2.1: Token Counting is Heuristic
+
+**Title**: Token counting uses character-based approximation
+
+**Subsystem**: Context Engine (`hestia/context_engine.py`)
+
+**Description**: Token count estimation is character-based and heuristic, not byte-accurate. Exact tokenizer parity with production LLM tokenizers (e.g., tiktoken) is intentionally avoided.
+
+**Rationale**: Determinism-preserving design choice. Character-based counting ensures:
+- Reproducible token counts across runs
+- No external tokenizer dependency
+- Predictable behavior in resource-constrained environments
+- Faster computation
+
+**Acceptability**: ✅ **ACCEPTED** (by design) - Users are responsible for ensuring input fits within token limits. Slight variance from production tokenizers is acceptable for this subsystem.
+
+**Implications**:
+- Token count is approximate, not exact
+- May differ from LLM's actual token usage
+- Character-to-token ratio is ~4:1 (heuristic)
+- Users should budget conservatively
+
+---
+
 ## Cycle 1: Intent Classification
 
 ### LIMITATION-1.1: Negation Not Detected
