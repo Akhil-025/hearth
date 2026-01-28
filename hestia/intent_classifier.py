@@ -52,46 +52,120 @@ class IntentClassifier:
             "search knowledge base",
             "find knowledge about"
         ]
+        
+        # Hephaestus domain patterns (code reasoning, debugging, design)
+        self.hephaestus_patterns = [
+            "debug",
+            "design",
+            "refactor",
+            "review",
+            "code",
+            "architecture",
+            "error",
+            "crash",
+            "improve",
+            "clean",
+            "best practice",
+        ]
+        
+        # Hermes domain patterns (text transformation, communication)
+        self.hermes_patterns = [
+            "rewrite",
+            "rephrase",
+            "summarize",
+            "simplify",
+            "clearer",
+            "make this clear",
+            "make it clear",
+        ]
+        
+        # Apollo domain patterns (health/fitness/wellness information)
+        self.apollo_patterns = [
+            "health",
+            "fitness",
+            "exercise",
+            "nutrition",
+            "sleep",
+            "wellbeing",
+            "body",
+            "physiology",
+        ]
+        
+        # Dionysus domain patterns (music/art/culture/entertainment information)
+        self.dionysus_patterns = [
+            "music",
+            "song",
+            "genre",
+            "art",
+            "culture",
+            "party",
+            "fun",
+            "vibe",
+            "entertainment",
+        ]
+        
+        # Pluto domain patterns (financial/economic concepts information)
+        self.pluto_patterns = [
+            "money",
+            "finance",
+            "financial",
+            "economics",
+            "economy",
+            "wealth",
+            "asset",
+            "liability",
+            "budget",
+            "risk",
+        ]
     
-    async def classify(self, text: str) -> Dict[str, Any]:
+    def classify(self, text: str) -> str:
         """
         Classify intent using simple keyword matching.
         
         Returns:
-            Dict with intent and confidence
+            str: Intent name (memory_query, knowledge_query, hephaestus_query, general, etc.)
         """
         text_lower = text.lower().strip()
         
         # Check for explicit memory query patterns FIRST
         for pattern in self.memory_patterns:
             if pattern in text_lower:
-                return {
-                    "intent": "memory_query",
-                    "confidence": 0.9,
-                    "method": "pattern_match"
-                }
+                return "memory_query"
 
         # Check for explicit knowledge search patterns
         for pattern in self.knowledge_patterns:
             if pattern in text_lower:
-                return {
-                    "intent": "knowledge_query",
-                    "confidence": 0.9,
-                    "method": "pattern_match"
-                }
+                return "knowledge_query"
+        
+        # Check for Hephaestus domain patterns (code reasoning)
+        for pattern in self.hephaestus_patterns:
+            if pattern in text_lower:
+                return "hephaestus_query"
+        
+        # Check for Hermes domain patterns (text transformation)
+        for pattern in self.hermes_patterns:
+            if pattern in text_lower:
+                return "hermes_query"
+        
+        # Check for Apollo domain patterns (health/wellness information)
+        for pattern in self.apollo_patterns:
+            if pattern in text_lower:
+                return "apollo_query"
+        
+        # Check for Dionysus domain patterns (music/art/culture information)
+        for pattern in self.dionysus_patterns:
+            if pattern in text_lower:
+                return "dionysus_query"
+        
+        # Check for Pluto domain patterns (financial/economic concepts information)
+        for pattern in self.pluto_patterns:
+            if pattern in text_lower:
+                return "pluto_query"
         
         # Check for keyword matches
         for keyword, intent in self.keyword_map.items():
             if keyword in text_lower:
-                return {
-                    "intent": intent,
-                    "confidence": 0.8,
-                    "method": "keyword_match"
-                }
+                return intent
         
         # Default fallback
-        return {
-            "intent": "general",
-            "confidence": 0.5,
-            "method": "fallback"
-        }
+        return "general"

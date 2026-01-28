@@ -1,30 +1,7 @@
-"""
-Financial Ledger - Double-entry accounting with encryption.
-"""
-from __future__ import annotations
+"""Ledger - DISABLED in Pluto v0.2.
 
-import asyncio
-import json
-from dataclasses import dataclass
-from datetime import datetime, timedelta
-from decimal import Decimal, ROUND_HALF_UP
-from enum import Enum
-from typing import Dict, List, Optional, Tuple
-from uuid import UUID, uuid4
-
-from pydantic import BaseModel, Field, validator
-
-from ..core.kernel import IService, ServiceInfo, ServiceStatus
-from ..shared.crypto.encryption import encrypt_data, decrypt_data
-from ..shared.logging.structured_logger import StructuredLogger
-from ..shared.schemas.finance import (
-    Account,
-    AccountType,
-    Currency,
-    Transaction,
-    TransactionStatus,
-    TransactionType
-)
+Financial ledger and transaction tracking are not enabled.
+Pluto provides conceptual information only.
 
 
 class LedgerEntry(BaseModel):

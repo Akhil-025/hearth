@@ -97,7 +97,6 @@ class TestMemoryReadGating:
 
     def test_memory_query_intent_detection(self):
         """IntentClassifier.classify() detects memory_query patterns."""
-        import asyncio
         classifier = IntentClassifier()
         
         patterns = [
@@ -111,9 +110,8 @@ class TestMemoryReadGating:
         ]
         
         for pattern in patterns:
-            # Use asyncio to call async classify
-            result = asyncio.run(classifier.classify(pattern))
-            assert result["intent"] == "memory_query", f"Pattern '{pattern}' should match"
+            result = classifier.classify(pattern)
+            assert result == "memory_query", f"Pattern '{pattern}' should match, got {result}"
             
     def test_memory_query_blocks_llm(self):
         """memory_query intent goes to _handle_memory_query, never LLM."""
@@ -189,7 +187,6 @@ class TestAthenaTrigerGating:
 
     def test_knowledge_query_intent_detection(self):
         """IntentClassifier.classify() detects knowledge_query patterns."""
-        import asyncio
         classifier = IntentClassifier()
         
         patterns = [
@@ -200,8 +197,8 @@ class TestAthenaTrigerGating:
         ]
         
         for pattern in patterns:
-            result = asyncio.run(classifier.classify(pattern))
-            assert result["intent"] == "knowledge_query", f"Pattern '{pattern}' should match"
+            result = classifier.classify(pattern)
+            assert result == "knowledge_query", f"Pattern '{pattern}' should match, got {result}"
 
     def test_knowledge_query_blocks_llm(self):
         """knowledge_query intent goes to _handle_knowledge_query, never LLM."""

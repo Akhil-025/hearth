@@ -12,6 +12,9 @@ DISABLED IN v0.1:
 - Action execution
 - Context building
 - Planner FSM
+
+ENABLED IN v0.2:
+- Hephaestus domain (read-only code reasoning)
 """
 from __future__ import annotations
 
@@ -30,6 +33,11 @@ from pydantic import BaseModel, Field
 from athena.retriever import AthenaRetriever
 from .intent_classifier import IntentClassifier
 from .ollama_client import OllamaClient
+from domains.hephaestus.service import HephaestusService
+from domains.hermes.service import HermesService
+from domains.apollo.service import ApolloService
+from domains.dionysus.service import DionysusService
+from domains.pluto.service import PlutoService
 
 
 # Context Bounds for LLM Safety and Transparency
@@ -91,6 +99,21 @@ class HestiaAgent:
         if self.enable_athena:
             self.knowledge_retriever = AthenaRetriever()
         
+        # Hephaestus domain (code reasoning, deterministic)
+        self.hephaestus = HephaestusService()
+        
+        # Hermes domain (text transformation, deterministic)
+        self.hermes = HermesService()
+        
+        # Apollo domain (health/wellness information, deterministic)
+        self.apollo = ApolloService()
+        
+        # Dionysus domain (music/art/culture information, deterministic)
+        self.dionysus = DionysusService()
+        
+        # Pluto domain (financial/economic concepts information, deterministic)
+        self.pluto = PlutoService()
+        
         self._llm_initialized = False
     
     async def initialize(self) -> None:
@@ -118,14 +141,19 @@ class HestiaAgent:
     
     async def process(self, user_input: str) -> AgentResponse:
         """
-        Process input with optional LLM reasoning and memory.
+        Process input with optional LLM reasoning, memory, and domains.
         
         Flow:
         1. Classify intent (keyword matching)
         2. If intent is memory_query: Retrieve and format memories (NO LLM)
         3. If intent is knowledge_query: Run Athena lookup (NO LLM)
-        4. Else if LLM enabled: Generate LLM response
-        5. Else: Generate deterministic response
+        4. If intent is hephaestus_query: Route to Hephaestus domain (NO LLM)
+        5. If intent is hermes_query: Route to Hermes domain (NO LLM)
+        6. If intent is apollo_query: Route to Apollo domain (NO LLM)
+        7. If intent is dionysus_query: Route to Dionysus domain (NO LLM)
+        8. If intent is pluto_query: Route to Pluto domain (NO LLM)
+        9. Else if LLM enabled: Generate LLM response
+        10. Else: Generate deterministic response
         
         Args:
             user_input: Raw text input from user
@@ -134,9 +162,7 @@ class HestiaAgent:
             AgentResponse with classified intent and response
         """
         # Classify intent
-        classification = await self.intent_classifier.classify(user_input)
-        intent = classification["intent"]
-        confidence = classification["confidence"]
+        intent = self.intent_classifier.classify(user_input)
         
         # Handle explicit memory query (NEVER goes through LLM)
         if intent == "memory_query":
@@ -144,7 +170,7 @@ class HestiaAgent:
             return AgentResponse(
                 text=response_text,
                 intent=intent,
-                confidence=confidence
+                confidence=0.9
             )
 
         # Handle explicit knowledge query (NO LLM, read-only lookup)
@@ -153,7 +179,52 @@ class HestiaAgent:
             return AgentResponse(
                 text=response_text,
                 intent=intent,
-                confidence=confidence
+                confidence=0.9
+            )
+        
+        # Handle Hephaestus domain (code reasoning, NO LLM, deterministic)
+        if intent == "hephaestus_query":
+            response_text = self._handle_hephaestus_query(user_input)
+            return AgentResponse(
+                text=response_text,
+                intent=intent,
+                confidence=0.9
+            )
+        
+        # Handle Hermes domain (text transformation, NO LLM, deterministic)
+        if intent == "hermes_query":
+            response_text = self._handle_hermes_query(user_input)
+            return AgentResponse(
+                text=response_text,
+                intent=intent,
+                confidence=0.9
+            )
+        
+        # Handle Apollo domain (health/wellness information, NO LLM, deterministic)
+        if intent == "apollo_query":
+            response_text = self._handle_apollo_query(user_input)
+            return AgentResponse(
+                text=response_text,
+                intent=intent,
+                confidence=0.9
+            )
+        
+        # Handle Dionysus domain (music/art/culture information, NO LLM, deterministic)
+        if intent == "dionysus_query":
+            response_text = self._handle_dionysus_query(user_input)
+            return AgentResponse(
+                text=response_text,
+                intent=intent,
+                confidence=0.9
+            )
+        
+        # Handle Pluto domain (financial/economic concepts information, NO LLM, deterministic)
+        if intent == "pluto_query":
+            response_text = self._handle_pluto_query(user_input)
+            return AgentResponse(
+                text=response_text,
+                intent=intent,
+                confidence=0.9
             )
         
         # Generate response (normal flow)
@@ -165,7 +236,7 @@ class HestiaAgent:
         return AgentResponse(
             text=response_text,
             intent=intent,
-            confidence=confidence
+            confidence=0.8
         )
 
     def should_use_memory_for_context(self, user_input: str) -> bool:
@@ -298,6 +369,136 @@ class HestiaAgent:
 
         return "\n".join(lines)
     
+    def _handle_hephaestus_query(self, user_input: str) -> str:
+        """
+        Handle code reasoning request via Hephaestus domain.
+        
+        Hephaestus is a deterministic, read-only domain that provides:
+        - Debugging assistance
+        - Design guidance
+        - Refactoring suggestions
+        - Code review insights
+        
+        NO side effects (no LLM, no memory writes, no planning).
+        
+        Returns:
+            str: Domain response with reasoning and suggestions
+        """
+        try:
+            response = self.hephaestus.handle(user_input)
+            return response
+        except Exception as e:
+            return f"Code reasoning temporarily unavailable: {e}"
+    
+    def _handle_hermes_query(self, user_input: str) -> str:
+        """
+        Handle text transformation request via Hermes domain.
+        
+        Hermes is a deterministic, read-only domain that provides:
+        - Text rewriting guidance
+        - Rephrasing suggestions
+        - Summarization techniques
+        - Simplification strategies
+        - Clarity improvements
+        
+        NO side effects (no LLM, no memory writes, no planning).
+        
+        Returns:
+            str: Domain response with transformation guidance
+        """
+        try:
+            response = self.hermes.handle(user_input)
+            return response
+        except Exception as e:
+            return f"Text transformation temporarily unavailable: {e}"
+    
+    def _handle_apollo_query(self, user_input: str) -> str:
+        """
+        Handle health/wellness information request via Apollo domain.
+        
+        Apollo is a deterministic, read-only domain that provides:
+        - Health and fitness information
+        - Wellness definitions
+        - Educational content
+        - Safety disclaimers
+        
+        STRICTLY DOES NOT provide:
+        - Medical diagnosis
+        - Treatment advice
+        - Personalized health guidance
+        - Mental health counseling
+        
+        NO side effects (no LLM, no memory writes, no planning).
+        
+        Returns:
+            str: Domain response with health information or explicit refusal
+        """
+        try:
+            response = self.apollo.handle(user_input)
+            return response
+        except Exception as e:
+            return f"Health information temporarily unavailable: {e}"
+    
+    def _handle_dionysus_query(self, user_input: str) -> str:
+        """
+        Handle music/art/culture information request via Dionysus domain.
+        
+        Dionysus is a deterministic, read-only domain that provides:
+        - Music genre explanations
+        - Art style descriptions
+        - Cultural information
+        - Entertainment concepts
+        - Party vibe descriptions
+        
+        STRICTLY DOES NOT provide:
+        - Creative generation (songs, poems, lyrics, stories)
+        - Emotional or mental health advice
+        - Substance use advice
+        - Lifestyle coaching
+        - Personal recommendations
+        
+        NO side effects (no LLM, no memory writes, no planning).
+        
+        Returns:
+            str: Domain response with cultural information or explicit refusal
+        """
+        try:
+            response = self.dionysus.handle(user_input)
+            return response
+        except Exception as e:
+            return f"Cultural information temporarily unavailable: {e}"
+    
+    def _handle_pluto_query(self, user_input: str) -> str:
+        """
+        Handle financial/economic concepts request via Pluto domain.
+        
+        Pluto is a deterministic, read-only domain that provides:
+        - Financial concept definitions
+        - Economic mechanism explanations
+        - Historical/theoretical context
+        - Neutral descriptions of economic systems
+        
+        STRICTLY DOES NOT provide:
+        - Advice ("You should...")
+        - Recommendations ("Invest in...")
+        - Numbers, calculations, or projections
+        - Risk assessment or modeling
+        - Personal finance guidance
+        - Trading or investing strategy
+        - Crypto guidance
+        - Tax strategy
+        
+        NO side effects (no LLM, no memory writes, no planning).
+        
+        Returns:
+            str: Domain response with concept explanation or explicit refusal
+        """
+        try:
+            response = self.pluto.handle(user_input)
+            return response
+        except Exception as e:
+            return f"Financial concept information temporarily unavailable: {e}"
+    
     def should_offer_memory(self, user_input: str, intent: str) -> bool:
         """
         Decide if this input is worth remembering.
@@ -307,8 +508,8 @@ class HestiaAgent:
         if not self.enable_memory:
             return False
         
-        # NEVER offer to remember memory or knowledge queries themselves
-        if intent in ["memory_query", "knowledge_query"]:
+        # NEVER offer to remember memory, knowledge, or domain queries themselves
+        if intent in ["memory_query", "knowledge_query", "hephaestus_query", "hermes_query", "apollo_query", "dionysus_query", "pluto_query"]:
             return False
         
         # Don't remember greetings or help requests
