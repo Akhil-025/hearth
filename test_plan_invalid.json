@@ -1,0 +1,11 @@
+{
+  "user_id": "cli_user",
+  "trigger_type": "manual",
+  "steps": [
+    {
+      "domain": "apollo",
+      "method": "test",
+      "parameters": {}
+    }
+  ]
+}

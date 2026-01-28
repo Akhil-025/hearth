@@ -1,0 +1,36 @@
+{
+  "user_id": "complex_user",
+  "token_hash": "hash_complex_123",
+  "trigger_type": "scheduled",
+  "steps": [
+    {
+      "domain": "apollo",
+      "method": "analyze_habit",
+      "parameters": {"habit_id": "sleep_001", "days": 7}
+    },
+    {
+      "domain": "hephaestus",
+      "method": "design_solution",
+      "parameters": {"problem": "poor_sleep", "constraints": ["time_limited"]}
+    },
+    {
+      "domain": "dionysus",
+      "method": "suggest_leisure",
+      "parameters": {"mood": "tired", "duration": 30}
+    }
+  ],
+  "data_bindings": [
+    {
+      "source_step": 0,
+      "source_path": "recommendations",
+      "target_step": 1,
+      "target_path": "suggestions"
+    },
+    {
+      "source_step": 1,
+      "source_path": "design",
+      "target_step": 2,
+      "target_path": "context"
+    }
+  ]
+}

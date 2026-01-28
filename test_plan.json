@@ -1,0 +1,21 @@
+{
+  "user_id": "cli_user",
+  "token_hash": "test_token",
+  "trigger_type": "manual",
+  "steps": [
+    {
+      "domain": "apollo",
+      "method": "analyze_health",
+      "parameters": {
+        "health_data": "test_data"
+      }
+    },
+    {
+      "domain": "hermes",
+      "method": "send_notification",
+      "parameters": {
+        "message": "Analysis complete"
+      }
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "user_id": "cli_user",
+  "token_hash": "test_token",
+  "trigger_type": "manual",
+  "steps": [
+    {
+      "domain": "apollo",
+      "method": "test",
+      "parameters": {}
+    }
+  ],
+  "extra_field": "not allowed"
+}
