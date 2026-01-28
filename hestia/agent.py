@@ -30,7 +30,7 @@ from pydantic import BaseModel, Field
 # from .action_router import ActionRouter
 # from .domain_router import DomainRouter
 
-from athena.retriever import AthenaRetriever
+from athena.service import AthenaService
 from .intent_classifier import IntentClassifier
 from .ollama_client import OllamaClient
 from domains.hephaestus.service import HephaestusService
@@ -86,18 +86,38 @@ class HestiaAgent:
                 timeout=config.get("ollama_timeout", 60)
             )
         
-        # Optional memory store
-        self.memory_store = None
-        if self.enable_memory:
-            from mnemosyne.memory_store import MemoryStore
-            self.memory_store = MemoryStore(
-                db_path=config.get("memory_db_path", "./data/memory.db")
+        # Memory service (Mnemosyne) - always initialized
+        # BUG-2.1 FIX: Never None; always returns a service (possibly disabled)
+        # Guarantee: memory_service.read() never raises AttributeError
+        from mnemosyne.service import MnemosyneService
+        from mnemosyne.service_config import MnemosyneConfig
+        
+        memory_config = MnemosyneConfig(
+            enabled=self.enable_memory,
+            db_path=config.get("memory_db_path", "./data/memory.db")
+        )
+        self.memory_service = MnemosyneService(config=memory_config)
+        self.memory_store = None  # Backward compatibility
+        # Expose the underlying store for backward compatibility
+        if self.memory_service.memory_store:
+            self.memory_store = self.memory_service.memory_store
+        
+        # Optional knowledge retriever (v0.1 knowledge system)
+        self.knowledge_retriever = None
+        if self.enable_athena:
+            from athena.knowledge_store import KnowledgeStore
+            self.knowledge_retriever = KnowledgeStore(
+                store_path=config.get("knowledge_path", "./data/knowledge.json")
             )
 
-        # Optional knowledge retriever (read-only)
-        self.knowledge_retriever: Optional[AthenaRetriever] = None
-        if self.enable_athena:
-            self.knowledge_retriever = AthenaRetriever()
+        # Athena service (knowledge base search, read-only, intent-gated)
+        from athena.config import AthenaConfig
+        athena_config = AthenaConfig(
+            enabled=config.get("enable_athena", False),
+            data_dir=config.get("athena_data_dir", "./data/notes"),
+            index_dir=config.get("athena_index_dir", "./.athena_index"),
+        )
+        self.athena = AthenaService(config=athena_config)
         
         # Hephaestus domain (code reasoning, deterministic)
         self.hephaestus = HephaestusService()
@@ -227,6 +247,15 @@ class HestiaAgent:
                 confidence=0.9
             )
         
+        # Handle Athena domain (knowledge base search, NO LLM, read-only)
+        if intent == "athena_query":
+            response_text = self._handle_athena_query(user_input)
+            return AgentResponse(
+                text=response_text,
+                intent=intent,
+                confidence=0.9
+            )
+        
         # Generate response (normal flow)
         if self.enable_llm and self._llm_initialized:
             response_text = await self._generate_llm_response(intent, user_input)
@@ -316,27 +345,26 @@ class HestiaAgent:
         Returns:
             Formatted list of memories or message if none exist
         """
-        if not self.memory_store:
+        if not self.memory_service or not self.memory_service.config.enabled:
             return "Memory is not enabled. Use --memory flag to enable it."
         
         try:
-            # Get recent memories (limit to 10 for readability)
-            memories = self.memory_store.get_recent(count=10)
+            # Use MnemosyneService to read recent memories
+            memories_text = self.memory_service.read(limit=10)
             
-            if not memories:
+            if not memories_text:
                 return "I don't have any memories saved yet."
             
             # Format memories as a numbered list
             lines = ["You asked me to remember:"]
-            for i, memory in enumerate(memories, 1):
-                # Parse timestamp for readability
-                timestamp = memory.timestamp[:19]  # Strip microseconds
-                lines.append(f"  {i}. [{timestamp}] {memory.content}")
+            for i, memory_content in enumerate(memories_text, 1):
+                lines.append(f"  {i}. {memory_content}")
             
             # Add count if there are more
-            total = self.memory_store.count()
-            if total > len(memories):
-                lines.append(f"\n(Showing {len(memories)} of {total} total memories)")
+            stats = self.memory_service.stats()
+            total = stats.get("memory_count", 0)
+            if total > len(memories_text):
+                lines.append(f"\n(Showing {len(memories_text)} of {total} total memories)")
             
             return "\n".join(lines)
             
@@ -364,8 +392,9 @@ class HestiaAgent:
 
         lines = ["Found knowledge entries:"]
         for idx, item in enumerate(results, 1):
-            lines.append(f"  {idx}. {item['title']}")
-            lines.append(f"     Excerpt: {item['excerpt']}")
+            excerpt = self.knowledge_retriever.excerpt(item, query)
+            lines.append(f"  {idx}. {item.title}")
+            lines.append(f"     Excerpt: {excerpt}")
 
         return "\n".join(lines)
     
@@ -499,6 +528,60 @@ class HestiaAgent:
         except Exception as e:
             return f"Financial concept information temporarily unavailable: {e}"
     
+    def _handle_athena_query(self, user_input: str) -> str:
+        """
+        Handle knowledge base search via Athena service.
+        
+        Athena is a read-only, intent-gated vector search system that:
+        - Retrieves documents from user's local knowledge base
+        - Returns source excerpts with page numbers and file names
+        - Performs deterministic vector similarity search
+        
+        STRICTLY DOES NOT:
+        - Call LLM (returns raw context only)
+        - Write to memory
+        - Run background indexing
+        - Activate without explicit user intent
+        - Automatically retrieve or summarize
+        
+        Flow:
+        1. User asks: "search my notes for X"
+        2. Athena performs vector search
+        3. Returns matching excerpts with metadata
+        4. User decides if LLM should generate answer from context
+        
+        NO side effects (read-only, no LLM, no memory writes, no autonomy).
+        
+        Returns:
+            str: Formatted source excerpts or "no results" message
+        """
+        try:
+            if not self.athena.config.enabled:
+                return "Athena knowledge base search is disabled."
+            
+            result = self.athena.query(user_input, top_k=5)
+            
+            if not result.has_sources:
+                return (
+                    "No matching documents found in knowledge base. "
+                    "Make sure PDFs are indexed using explicit ingestion commands."
+                )
+            
+            # Format sources for display
+            lines = [f"Found {result.source_count} matching sources:\n"]
+            for i, source in enumerate(result.sources, 1):
+                page_str = f", page {source.page_number}" if source.page_number else ""
+                lines.append(
+                    f"{i}. [{source.file_name}{page_str}] "
+                    f"({source.similarity_score:.2%} match)\n"
+                    f"   {source.text[:150]}...\n"
+                )
+            
+            return "".join(lines).strip()
+            
+        except Exception as e:
+            return f"Knowledge base search temporarily unavailable: {e}"
+    
     def should_offer_memory(self, user_input: str, intent: str) -> bool:
         """
         Decide if this input is worth remembering.
@@ -509,7 +592,7 @@ class HestiaAgent:
             return False
         
         # NEVER offer to remember memory, knowledge, or domain queries themselves
-        if intent in ["memory_query", "knowledge_query", "hephaestus_query", "hermes_query", "apollo_query", "dionysus_query", "pluto_query"]:
+        if intent in ["memory_query", "knowledge_query", "hephaestus_query", "hermes_query", "apollo_query", "dionysus_query", "pluto_query", "athena_query"]:
             return False
         
         # Don't remember greetings or help requests
@@ -540,21 +623,16 @@ class HestiaAgent:
         Returns:
             True if saved successfully, False otherwise
         """
-        if not self.memory_store:
+        if not self.memory_service or not self.memory_service.config.enabled:
             return False
         
         try:
-            from mnemosyne.memory_store import MemoryRecord
-            
-            record = MemoryRecord(
+            # Use MnemosyneService.write() for explicit memory writing
+            return self.memory_service.write(
                 content=user_input,
                 memory_type=intent,
-                source="user_confirmation",
                 metadata={"timestamp": datetime.now().isoformat()}
             )
-            
-            self.memory_store.append(record)
-            return True
             
         except Exception as e:
             print(f"ERROR: Failed to save memory: {e}")

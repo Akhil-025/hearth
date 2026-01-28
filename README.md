@@ -1,18 +1,12 @@
-# HEARTH - Personal Cognitive OS (v0.1)
+# HEARTH: Minimal Execution Spine
 
-> **Recovery Status**: ✅ Execution spine operational as of 2026-01-27
+A deterministic, gated agent system designed for safety-critical interactions through bounded domain specialization.
 
-Hearth is an experimental, local-first cognitive system prototype.
-It is a research and engineering scaffold, not a finished assistant.
+HEARTH (Hestia's Educational Analysis and Reasoning Through Hierarchical domains) is a Python-based agent framework that processes text input through a strict execution pipeline. The system classifies queries into explicit intent categories, routes to deterministic domain subsystems, and returns structured responses without side effects or autonomous decision-making.
 
-This repository explores how a governed personal cognitive system *could* be built, with explicit separation between:
-
-* orchestration (Hearth)
-* interaction (Hestia)
-* memory (Mnemosyne)
-* knowledge (Athena)
-* finance (Pluto)
-* domain reasoning modules (Hermes, Hephaestus, Apollo, Dionysus)
+**Current Version:** v0.2 (all domains implemented)  
+**Python:** 3.11.9  
+**Testing:** 124 passing tests (18 v0.1 baseline + 106 v0.2 domain-specific)
 
 ---
 
@@ -88,11 +82,11 @@ Hearth (runtime / orchestration)
 ├── Hestia      – user-facing agent (intent, planning, responses)
 ├── Mnemosyne  – memory engine (structured + episodic)
 ├── Athena     – knowledge & document reasoning
-├── Pluto      – financial analysis (advisory only)
 └── Domains
     ├── Hermes      – communication & social reasoning
     ├── Hephaestus – engineering & technical reasoning
     ├── Apollo     – health & wellbeing (non-medical)
+    ├── Pluto      – financial analysis (advisory only)
     └── Dionysus   – creativity, music, leisure
 ```
 

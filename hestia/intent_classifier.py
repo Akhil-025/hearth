@@ -117,6 +117,17 @@ class IntentClassifier:
             "budget",
             "risk",
         ]
+        
+        # Athena domain patterns (knowledge base search)
+        self.athena_patterns = [
+            "search my notes",
+            "look up in my",
+            "what do my notes say",
+            "from my pdfs",
+            "search my documents",
+            "find materials",
+            "search my study material",
+        ]
     
     def classify(self, text: str) -> str:
         """
@@ -161,6 +172,11 @@ class IntentClassifier:
         for pattern in self.pluto_patterns:
             if pattern in text_lower:
                 return "pluto_query"
+        
+        # Check for Athena domain patterns (knowledge base search)
+        for pattern in self.athena_patterns:
+            if pattern in text_lower:
+                return "athena_query"
         
         # Check for keyword matches
         for keyword, intent in self.keyword_map.items():
