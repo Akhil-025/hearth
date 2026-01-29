@@ -7,7 +7,9 @@ Safe mode overrides all module behavior.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
+import inspect
 from typing import Dict, List, Optional, Set
 from uuid import uuid4
 
@@ -153,7 +155,7 @@ class SafeModeManager:
         
         # Record activation
         self.config.activation_history.append({
-            "timestamp": __import__("datetime").datetime.now().isoformat(),
+            "timestamp": datetime.now().isoformat(),
             "previous_level": previous_level.value,
             "new_level": level.value,
             "reason": reason,
@@ -390,6 +392,6 @@ def require_safe_mode(module: str, operation: str, capability: Optional[Capabili
             manager.enforce_operation(module, operation, capability)
             return await func(*args, **kwargs)
         
-        return async_wrapper if __import__("inspect").iscoroutinefunction(func) else wrapper
+        return async_wrapper if inspect.iscoroutinefunction(func) else wrapper
     
     return decorator

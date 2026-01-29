@@ -7,11 +7,17 @@ Violations raise fatal errors - system cannot proceed in invalid state.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
+import inspect
 from typing import Any, Callable, Dict, List, Optional, Set, Type
 from uuid import UUID
 
-from ..shared.logging.structured_logger import StructuredLogger
+try:
+    from shared.logging.structured_logger import StructuredLogger
+except ImportError:
+    # Fallback if shared logging not available
+    StructuredLogger = None
 
 
 class InvariantSeverity(Enum):
@@ -182,17 +188,26 @@ class InvariantRegistry:
         if violations:
             # Record violations
             self.violations.extend(violations)
-            
+
+            # Artemis fault containment
+            # Blast radius limited
+            # Fail closed
+            # No recovery without restart
+
             # Raise appropriate exception
             fatal_violations = [
                 v for v in violations 
                 if v.severity == InvariantSeverity.FATAL
             ]
-            
+
             if fatal_violations:
-                raise FatalInvariantViolationError(fatal_violations)
+                error = FatalInvariantViolationError(fatal_violations)
+                _invoke_violation_handler(error)
+                raise error
             else:
-                raise InvariantViolationError(violations)
+                error = InvariantViolationError(violations)
+                _invoke_violation_handler(error)
+                raise error
     
     def get_violations(
         self,
@@ -250,7 +265,7 @@ class NoDirectMemoryWriteInvariant(SystemInvariant):
                 module=module,
                 operation=operation,
                 context=context,
-                timestamp=__import__("datetime").datetime.now().isoformat()
+                timestamp=datetime.now().isoformat()
             )
         return None
 
@@ -277,7 +292,7 @@ class NoPreferenceInferenceInvariant(SystemInvariant):
                 module=module,
                 operation=operation,
                 context=context,
-                timestamp=__import__("datetime").datetime.now().isoformat()
+                timestamp=datetime.now().isoformat()
             )
         return None
 
@@ -303,7 +318,7 @@ class NoTransactionExecutionInvariant(SystemInvariant):
                 module=module,
                 operation=operation,
                 context=context,
-                timestamp=__import__("datetime").datetime.now().isoformat()
+                timestamp=datetime.now().isoformat()
             )
         return None
 
@@ -329,7 +344,7 @@ class NoBehavioralSelfPromotionInvariant(SystemInvariant):
                 module=context.get("module", "unknown"),
                 operation=operation,
                 context=context,
-                timestamp=__import__("datetime").datetime.now().isoformat()
+                timestamp=datetime.now().isoformat()
             )
         return None
 
@@ -355,7 +370,7 @@ class IdentityMemoryImmutableInvariant(SystemInvariant):
                 module=context.get("module", "unknown"),
                 operation=operation,
                 context=context,
-                timestamp=__import__("datetime").datetime.now().isoformat()
+                timestamp=datetime.now().isoformat()
             )
         return None
 
@@ -381,7 +396,7 @@ class NoDirectLLMAccessInvariant(SystemInvariant):
                 module=module,
                 operation=operation,
                 context=context,
-                timestamp=__import__("datetime").datetime.now().isoformat()
+                timestamp=datetime.now().isoformat()
             )
         return None
 
@@ -407,7 +422,7 @@ class PermissionBypassInvariant(SystemInvariant):
                 module=context.get("module", "unknown"),
                 operation=operation,
                 context=context,
-                timestamp=__import__("datetime").datetime.now().isoformat()
+                timestamp=datetime.now().isoformat()
             )
         return None
 
@@ -433,7 +448,7 @@ class NoAutonomousExecutionInvariant(SystemInvariant):
                 module=context.get("module", "unknown"),
                 operation=context.get("operation", ""),
                 context=context,
-                timestamp=__import__("datetime").datetime.now().isoformat()
+                timestamp=datetime.now().isoformat()
             )
         return None
 
@@ -461,7 +476,7 @@ class NoCloudAPIsInvariant(SystemInvariant):
                 module=context.get("module", "unknown"),
                 operation=operation,
                 context=context,
-                timestamp=__import__("datetime").datetime.now().isoformat()
+                timestamp=datetime.now().isoformat()
             )
         return None
 
@@ -488,12 +503,33 @@ class FatalInvariantViolationError(InvariantViolationError):
 # Global invariant registry singleton
 _invariant_registry: Optional[InvariantRegistry] = None
 
+# Optional handler for invariant violations (set during bootstrap)
+_violation_handler: Optional[Callable[[Exception], None]] = None
+
 def get_invariant_registry() -> InvariantRegistry:
     """Get the global invariant registry (singleton)."""
     global _invariant_registry
     if _invariant_registry is None:
         _invariant_registry = InvariantRegistry()
     return _invariant_registry
+
+
+def set_violation_handler(handler: Callable[[Exception], None]) -> None:
+    """
+    Set the invariant violation handler.
+
+    Artemis fault containment
+    Blast radius limited
+    Fail closed
+    No recovery without restart
+    """
+    global _violation_handler
+    _violation_handler = handler
+
+
+def _invoke_violation_handler(error: Exception) -> None:
+    if _violation_handler:
+        _violation_handler(error)
 
 
 # Decorator for invariant checking
@@ -515,7 +551,7 @@ def enforce_invariants(module: str, operation: str):
                 "function": func.__name__,
                 "args": str(args)[:100],  # Truncate for safety
                 "kwargs": str(kwargs)[:100],
-                "timestamp": __import__("datetime").datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat()
             }
             
             # Enforce invariants before execution
@@ -532,12 +568,12 @@ def enforce_invariants(module: str, operation: str):
                 "function": func.__name__,
                 "args": str(args)[:100],
                 "kwargs": str(kwargs)[:100],
-                "timestamp": __import__("datetime").datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat()
             }
             
             registry.enforce(module, operation, context)
             return await func(*args, **kwargs)
         
-        return async_wrapper if __import__("inspect").iscoroutinefunction(func) else wrapper
+        return async_wrapper if inspect.iscoroutinefunction(func) else wrapper
     
     return decorator

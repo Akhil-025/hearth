@@ -30,6 +30,11 @@ from pydantic import BaseModel, Field
 # from .action_router import ActionRouter
 # from .domain_router import DomainRouter
 
+from artemis.boundary import LockdownPolicy
+from artemis.approval import ApprovalRequest, validate_approval_request
+from artemis.security_summary import SecuritySummary
+from artemis.plan_compiler import PlanCompiler, PlanDraft, StepParseError, ValidationError
+
 from athena.service import AthenaService
 from .intent_classifier import IntentClassifier
 from .ollama_client import OllamaClient
@@ -67,15 +72,27 @@ class HestiaAgent:
     - enable_memory=True: Ask user for confirmation before saving
     
     FUTURE: Will include planning, actions, domains.
+    
+    Policy awareness:
+      Hestia has access to Artemis security policy via Kernel.
+      Policy awareness only — enforcement occurs later.
+      No behavior changes based on policy at this stage.
     """
     
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: Optional[Dict[str, Any]] = None, kernel: Optional[Any] = None):
         config = config or {}
         
         self.intent_classifier = IntentClassifier()
         self.enable_llm = config.get("enable_llm", False)
         self.enable_memory = config.get("enable_memory", False)
         self.enable_athena = config.get("enable_athena", True)
+        self._kernel = kernel  # Kernel reference for policy visibility
+        
+        # # LLM reasoning → plan
+        # # No execution authority
+        # # No autonomy
+        # # Fail-closed
+        self._plan_compiler = PlanCompiler(kernel=kernel)
         
         # Optional LLM client
         self.llm_client: Optional[OllamaClient] = None
@@ -158,6 +175,70 @@ class HestiaAgent:
         """Cleanup LLM client if initialized."""
         if self.llm_client and self._llm_initialized:
             await self.llm_client.cleanup()
+    
+    def current_security_posture(self) -> LockdownPolicy:
+        """
+        Get the current security policy from Artemis via Kernel.
+        
+        Policy awareness only — enforcement occurs later.
+        This method returns policy information for inspection/logging,
+        not for behavior modification.
+        
+        Returns:
+            The current LockdownPolicy, or a safe default if unavailable
+        """
+        if self._kernel is None:
+            # No kernel reference - return a permissive default
+            from artemis.boundary import POLICY_SECURE
+            return POLICY_SECURE
+        
+        # Simply return what Kernel knows - no enforcement here
+        return self._kernel.get_security_policy()
+
+    def current_security_summary(self) -> SecuritySummary:
+        """
+        Get the current security summary for user display.
+
+        Artemis security UX
+        Informational only
+        No authority
+        No side effects
+        """
+        if self._kernel is None:
+            return SecuritySummary(
+                state="UNKNOWN",
+                explanation="Security posture unavailable. Execution status unknown.",
+                last_transition_time="unknown",
+                execution_allowed=False,
+            )
+
+        summary = self._kernel.inspect_security_summary()
+        if summary is None:
+            return SecuritySummary(
+                state="UNKNOWN",
+                explanation="Security posture unavailable. Execution status unknown.",
+                last_transition_time="unknown",
+                execution_allowed=False,
+            )
+        return summary
+
+    def evaluate_approval_request(self, request: ApprovalRequest) -> tuple[bool, str]:
+        """
+        Evaluate approval request against security posture.
+
+        Artemis security UX
+        Informational only
+        No authority
+        No side effects
+        """
+        allowed, reason = validate_approval_request(request)
+        state = request.security_summary.state
+
+        if allowed:
+            return True, reason
+
+        explanation = f"{reason} Security state is {state}."
+        return False, explanation
     
     async def process(self, user_input: str) -> AgentResponse:
         """
@@ -704,9 +785,756 @@ class HestiaAgent:
             return "Hello! HEARTH v0.1 is running in minimal mode."
         elif intent == "help_request":
             return "HEARTH v0.1 - Minimal execution spine. Type any text to see intent classification."
-        elif intent == "question":
-            return f"You asked: '{user_input}'. Full reasoning is disabled in v0.1."
-        elif intent == "information_request":
-            return f"Information request received: '{user_input}'. Knowledge retrieval is disabled in v0.1."
+
+    # ========================================================================
+    # PLAN COMPILATION
+    # ========================================================================
+    # LLM reasoning → plan
+    # No execution authority
+    # No autonomy
+    # Fail-closed
+
+    def compile_plan(
+        self,
+        intent: str,
+        llm_output: str,
+        draft_id: Optional[str] = None,
+    ) -> Tuple[Optional[PlanDraft], str]:
+        """
+        Compile LLM reasoning into a strict, executable plan.
+
+        # LLM reasoning → plan
+        # No execution authority
+        # No autonomy
+        # Fail-closed
+
+        Args:
+            intent: User's original intent
+            llm_output: Raw LLM text (must use explicit step markers)
+            draft_id: Optional draft identifier (auto-generated if not provided)
+
+        Returns:
+            (PlanDraft or None, message)
+            - PlanDraft: Successfully compiled plan (immutable)
+            - None: Compilation failed (message contains reason)
+            - message: Status or error explanation (human-readable)
+        """
+        if not draft_id:
+            from uuid import uuid4
+            draft_id = str(uuid4())
+
+        # Get current security summary (inspection only, no mutation)
+        security_snapshot = {}
+        if self._kernel:
+            try:
+                summary = self._kernel.inspect_security_state()
+                if summary:
+                    security_snapshot = {
+                        "state": getattr(summary, "state", "unknown"),
+                        "explanation": getattr(summary, "explanation", ""),
+                        "execution_allowed": getattr(summary, "execution_allowed", False),
+                    }
+            except Exception:
+                # Fail closed: if inspection fails, use empty snapshot
+                pass
+
+        try:
+            # Compile plan
+            plan = self._plan_compiler.compile(
+                intent=intent,
+                llm_output=llm_output,
+                security_summary=security_snapshot,
+                draft_id=draft_id,
+            )
+            return plan, f"Plan compiled successfully ({plan.step_count()} steps)"
+
+        except StepParseError as e:
+            return None, f"Parse error: {e}"
+
+        except ValidationError as e:
+            return None, f"Validation error: {e}"
+
+        except Exception as e:
+            # Fail closed: unexpected errors treated as compilation failures
+            return None, f"Compilation error: {e}"
+
+    def get_plan_draft(self, plan: PlanDraft) -> Dict[str, Any]:
+        """
+        Export plan draft as structured dict (immutable).
+
+        # LLM reasoning → plan
+        # No execution authority
+        # No autonomy
+        # Fail-closed
+
+        Args:
+            plan: Compiled PlanDraft
+
+        Returns:
+            Immutable dict representation
+        """
+        return plan.to_dict()
+
+    # ========================================================================
+    # HESTIA AUTHORITY FLOW - UI LAYER
+    # ========================================================================
+    # UX only
+    # No authority
+    # No execution
+    # No autonomy
+
+    def present_plan(self, plan_draft: PlanDraft) -> Any:
+        """
+        Convert PlanDraft into human-readable PlanPresentation.
+
+        # UX only
+        # No authority
+        # No execution
+        # No autonomy
+
+        This method has NO execution authority.
+        It only converts a plan into human-readable form.
+
+        Args:
+            plan_draft: PlanDraft (immutable)
+
+        Returns:
+            PlanPresentation (immutable, human-readable)
+        """
+        from hestia.ui_layer import HestiaUIBoundary
+        return HestiaUIBoundary.present_plan(plan_draft)
+
+    def request_approval(self, plan_draft: PlanDraft) -> Tuple[bool, str]:
+        """
+        Request user approval for a plan.
+
+        # UX only
+        # No authority
+        # No execution
+        # No autonomy
+
+        This method has NO approval authority.
+        It only prompts the user and records their response.
+        The actual decision belongs entirely to the user.
+
+        Args:
+            plan_draft: PlanDraft (immutable)
+
+        Returns:
+            (approved: bool, reason: str)
+        """
+        from hestia.ui_layer import HestiaUIBoundary
+        plan_presentation = HestiaUIBoundary.present_plan(plan_draft)
+        return HestiaUIBoundary.request_approval_from_user(plan_presentation)
+
+    def explain_rejection(self, reason: str) -> str:
+        """
+        Build human-readable explanation for a rejected plan.
+
+        # UX only
+        # No authority
+        # No execution
+        # No autonomy
+
+        Args:
+            reason: The reason the plan was rejected
+
+        Returns:
+            str - Human-readable explanation
+        """
+        from hestia.ui_layer import HestiaUIBoundary
+        return HestiaUIBoundary.explain_rejection(reason)
+
+    def display_authority_boundaries(self) -> str:
+        """
+        Display what Hestia can and cannot do.
+
+        # UX only
+        # No authority
+        # No execution
+        # No autonomy
+
+        Returns:
+            str - Factual description of Hestia's boundaries
+        """
+        from hestia.ui_layer import HestiaUIBoundary
+        return HestiaUIBoundary.display_authority_constraints()
+
+    # =========================================================================
+    # LIVE MODE GATE UX METHODS (Step 18)
+    # =========================================================================
+    # These methods expose the live mode gate to the human user.
+    # They provide visibility and control over the execution authority switch.
+    # NO autonomy, NO automation, NO background execution.
+    # =========================================================================
+
+    def display_live_mode_status(self, live_mode_gate: Any) -> str:
+        """
+        Display current live mode status.
+
+        # UX only
+        # No authority
+        # No execution
+        # No autonomy
+
+        Shows:
+        - Current gate state (DRY_RUN or LIVE)
+        - What this means for execution
+        - Recent transition history
+
+        Args:
+            live_mode_gate: LiveModeGate instance
+
+        Returns:
+            str - Human-readable status display
+        """
+        if not live_mode_gate:
+            return "[LIVE MODE GATE NOT CONFIGURED]\nNo execution gate is active.\n"
+
+        state = live_mode_gate.get_state()
+        state_name = state.value
+
+        status_lines = []
+        status_lines.append("=" * 60)
+        status_lines.append("LIVE MODE GATE STATUS")
+        status_lines.append("=" * 60)
+        status_lines.append(f"Current State: {state_name}")
+        status_lines.append("")
+
+        if live_mode_gate.is_dry_run():
+            status_lines.append("EXECUTION: BLOCKED")
+            status_lines.append("All approved plans will be validated but NOT executed.")
+            status_lines.append("This is the SAFE default state.")
         else:
-            return f"Received: '{user_input}' (classified as: {intent})"
+            status_lines.append("EXECUTION: ENABLED")
+            status_lines.append("Approved plans WILL be executed.")
+            status_lines.append("Changes WILL affect your system.")
+
+        # Show recent transitions
+        history = live_mode_gate.get_transition_history()
+        if history:
+            status_lines.append("")
+            status_lines.append("Recent Transitions:")
+            for transition in history[-3:]:  # Last 3 transitions
+                ts = transition.timestamp.strftime("%Y-%m-%d %H:%M:%S")
+                auto_flag = " [AUTO]" if transition.automatic else ""
+                status_lines.append(
+                    f"  {ts}: {transition.from_state.value} → "
+                    f"{transition.to_state.value}{auto_flag}"
+                )
+                status_lines.append(f"    Reason: {transition.reason}")
+                if transition.user_identity:
+                    status_lines.append(f"    User: {transition.user_identity}")
+
+        status_lines.append("=" * 60)
+        return "\n".join(status_lines)
+
+    def explain_live_mode_consequences(self) -> str:
+        """
+        Explain what enabling live mode means.
+
+        # UX only
+        # No authority
+        # No execution
+        # No autonomy
+
+        Provides clear explanation of:
+        - What DRY_RUN means (safe)
+        - What LIVE means (dangerous)
+        - Security implications
+        - Recommended practices
+
+        Returns:
+            str - Human-readable explanation
+        """
+        explanation = """
+========================================================================
+LIVE MODE GATE: CONSEQUENCES AND RISKS
+========================================================================
+
+DRY_RUN MODE (Default - SAFE):
+- All approved plans are validated but NOT executed
+- You can test the governance loop without risk
+- No changes are made to your system
+- No commands are run
+- No files are created/modified/deleted
+- This is the FAIL-CLOSED default state
+
+LIVE MODE (DANGEROUS):
+- Approved plans WILL be executed
+- Commands WILL be run on your system
+- Files WILL be created/modified/deleted
+- Changes MAY be irreversible
+- Security risks increase significantly
+- You are responsible for all consequences
+
+SECURITY INTEGRATION:
+- If security state degrades to COMPROMISED or LOCKDOWN,
+  the gate will AUTOMATICALLY revert to DRY_RUN
+- This prevents execution during security incidents
+- Manual re-enable required after security recovery
+
+RECOMMENDED PRACTICE:
+1. Start in DRY_RUN mode (default)
+2. Test your plans thoroughly
+3. Review approval decisions
+4. Enable LIVE mode only when:
+   - You understand the plan completely
+   - You trust the approval process
+   - You accept all risks
+5. Disable LIVE mode immediately after execution
+6. Never leave LIVE mode enabled unattended
+
+REMEMBER:
+- Live mode is NOT a replacement for careful review
+- Live mode is NOT safe for untested plans
+- Live mode is NOT for experimentation
+- Live mode is opt-in, explicit, and audited
+
+========================================================================
+        """
+        return explanation.strip()
+
+    def enable_live_mode(
+        self,
+        live_mode_gate: Any,
+        reason: str,
+        user_identity: str = "anonymous",
+    ) -> Tuple[bool, str]:
+        """
+        Enable live mode (allow execution).
+
+        # UX wrapper only
+        # No authority beyond gate control
+        # No execution
+        # No autonomy
+
+        This method wraps the gate's enable_live() method and provides
+        user-friendly feedback.
+
+        Args:
+            live_mode_gate: LiveModeGate instance
+            reason: WHY you are enabling live mode (required)
+            user_identity: WHO is enabling live mode (required)
+
+        Returns:
+            (success: bool, message: str)
+        """
+        if not live_mode_gate:
+            return False, "ERROR: No live mode gate configured"
+
+        if not reason or not reason.strip():
+            return False, "ERROR: Reason is required to enable live mode"
+
+        if not user_identity or not user_identity.strip():
+            return False, "ERROR: User identity is required to enable live mode"
+
+        # Attempt to enable
+        success, message = live_mode_gate.enable_live(
+            reason=reason.strip(),
+            user_identity=user_identity.strip(),
+        )
+
+        if success:
+            return True, f"✓ LIVE MODE ENABLED\n{message}\n\nWARNING: Execution is now ACTIVE."
+        else:
+            return False, f"✗ LIVE MODE NOT ENABLED\n{message}"
+
+    def disable_live_mode(
+        self,
+        live_mode_gate: Any,
+        reason: str,
+        user_identity: str = "anonymous",
+    ) -> Tuple[bool, str]:
+        """
+        Disable live mode (block execution).
+
+        # UX wrapper only
+        # No authority beyond gate control
+        # No execution
+        # No autonomy
+
+        This method wraps the gate's disable_live() method and provides
+        user-friendly feedback.
+
+        Args:
+            live_mode_gate: LiveModeGate instance
+            reason: WHY you are disabling live mode (required)
+            user_identity: WHO is disabling live mode (required)
+
+        Returns:
+            (success: bool, message: str)
+        """
+        if not live_mode_gate:
+            return False, "ERROR: No live mode gate configured"
+
+        if not reason or not reason.strip():
+            return False, "ERROR: Reason is required to disable live mode"
+
+        if not user_identity or not user_identity.strip():
+            return False, "ERROR: User identity is required to disable live mode"
+
+        # Attempt to disable
+        success, message = live_mode_gate.disable_live(
+            reason=reason.strip(),
+            user_identity=user_identity.strip(),
+            automatic=False,
+        )
+
+        if success:
+            return True, f"✓ LIVE MODE DISABLED\n{message}\n\nExecution is now BLOCKED (safe)."
+        else:
+            return False, f"✗ LIVE MODE STATE UNCHANGED\n{message}"
+
+    # =========================================================================
+    # EXECUTION OBSERVABILITY UX METHODS (Step 19)
+    # =========================================================================
+    # These methods display execution results and rollback guidance.
+    # NO automation, NO retries, NO rollback execution.
+    # =========================================================================
+
+    def display_execution_summary(self, execution_record: Any) -> str:
+        """
+        Display execution summary clearly.
+
+        # Post-execution inspection only
+        # No automatic recovery
+        # No retries
+        # Fail-closed
+
+        Shows:
+        - Execution ID and status
+        - Duration
+        - Steps executed
+        - Security state before/after
+        - Any failures
+
+        Args:
+            execution_record: ExecutionRecord from artemis.execution_observability
+
+        Returns:
+            str - Human-readable summary
+        """
+        if not execution_record:
+            return "[NO EXECUTION RECORD]\n"
+
+        summary_lines = []
+        summary_lines.append("=" * 70)
+        summary_lines.append("EXECUTION SUMMARY")
+        summary_lines.append("=" * 70)
+        summary_lines.append("")
+
+        # Status and ID
+        summary_lines.append(f"Execution ID: {execution_record.execution_id}")
+        summary_lines.append(f"Plan ID: {execution_record.plan_id}")
+        summary_lines.append(f"Live Mode: {execution_record.live_mode_state}")
+        summary_lines.append(f"Status: {execution_record.status.value}")
+        summary_lines.append("")
+
+        # Duration
+        if execution_record.timestamp_end:
+            duration = execution_record.timestamp_end - execution_record.timestamp_start
+            summary_lines.append(f"Duration: {duration.total_seconds():.2f} seconds")
+            summary_lines.append(f"Started: {execution_record.timestamp_start.strftime('%Y-%m-%d %H:%M:%S')}")
+            summary_lines.append(f"Ended: {execution_record.timestamp_end.strftime('%Y-%m-%d %H:%M:%S')}")
+        else:
+            summary_lines.append(f"Started: {execution_record.timestamp_start.strftime('%Y-%m-%d %H:%M:%S')}")
+        summary_lines.append("")
+
+        # Steps
+        if execution_record.step_events:
+            summary_lines.append(f"Steps executed: {len(execution_record.step_events)}")
+            completed_count = sum(1 for e in execution_record.step_events 
+                                 if e.event_type.value == "step_completed")
+            failed_count = sum(1 for e in execution_record.step_events 
+                              if e.event_type.value == "step_failed")
+            summary_lines.append(f"  ✓ Completed: {completed_count}")
+            if failed_count > 0:
+                summary_lines.append(f"  ✗ Failed: {failed_count}")
+        else:
+            summary_lines.append("Steps executed: 0")
+        summary_lines.append("")
+
+        # Security
+        summary_lines.append("Security State:")
+        summary_lines.append(f"  Before: {execution_record.security_snapshot_pre.security_state}")
+        if execution_record.security_snapshot_post:
+            summary_lines.append(f"  After: {execution_record.security_snapshot_post.security_state}")
+        summary_lines.append("")
+
+        # Completion reason
+        if execution_record.completion_reason:
+            summary_lines.append(f"Reason: {execution_record.completion_reason}")
+            summary_lines.append("")
+
+        summary_lines.append("=" * 70)
+        return "\n".join(summary_lines)
+
+    def show_irreversible_actions(self, execution_record: Any) -> str:
+        """
+        Show which actions were irreversible.
+
+        # Post-execution inspection only
+        # No automatic recovery
+        # No retries
+        # Fail-closed
+
+        Args:
+            execution_record: ExecutionRecord
+
+        Returns:
+            str - List of irreversible actions
+        """
+        if not execution_record or not execution_record.step_events:
+            return "[NO STEPS EXECUTED]\n"
+
+        lines = []
+        lines.append("=" * 70)
+        lines.append("IRREVERSIBLE ACTIONS")
+        lines.append("=" * 70)
+        lines.append("")
+
+        lines.append("Steps that CANNOT be automatically undone:")
+        lines.append("")
+
+        for i, event in enumerate(execution_record.step_events, 1):
+            if event.event_type.value == "step_completed":
+                lines.append(f"{i}. Step {event.step_index}: {event.step_name}")
+                lines.append(f"   Completed at: {event.timestamp.strftime('%H:%M:%S')}")
+                lines.append("")
+
+        lines.append("=" * 70)
+        lines.append("Note: ALL executed steps may have side effects.")
+        lines.append("Manual verification is required before attempting rollback.")
+        lines.append("=" * 70)
+        return "\n".join(lines)
+
+    def show_rollback_guidance(self, rollback_scaffold: Any) -> str:
+        """
+        Show rollback guidance (NOT EXECUTED).
+
+        # Post-execution inspection only
+        # No automatic recovery
+        # No retries
+        # Fail-closed
+
+        Args:
+            rollback_scaffold: RollbackScaffold from artemis.execution_observability
+
+        Returns:
+            str - Rollback guidance (human-readable)
+        """
+        if not rollback_scaffold:
+            return "[NO ROLLBACK GUIDANCE]\n"
+
+        return rollback_scaffold.to_summary()
+
+    def confirm_manual_rollback(self, rollback_scaffold: Any) -> Tuple[bool, str]:
+        """
+        Request user confirmation for manual rollback.
+
+        # Post-execution inspection only
+        # No automatic recovery
+        # No retries
+        # Fail-closed
+
+        This method prompts the user and records their response.
+        It does NOT execute rollback - only confirms intent.
+
+        Args:
+            rollback_scaffold: RollbackScaffold
+
+        Returns:
+            (confirmed: bool, reason: str)
+        """
+        if not rollback_scaffold:
+            return False, "ERROR: No rollback scaffold provided"
+
+        if not rollback_scaffold.is_rollback_possible:
+            return False, f"Rollback not possible: {rollback_scaffold.reason}"
+
+        # Display guidance
+        guidance = rollback_scaffold.to_summary()
+        print(guidance)
+        print()
+
+        # Request confirmation
+        print("=" * 70)
+        print("MANUAL ROLLBACK CONFIRMATION")
+        print("=" * 70)
+        print()
+        print("⚠️  WARNING: Rollback will NOT be executed automatically.")
+        print("You are responsible for all manual rollback steps.")
+        print()
+        print("Do you want to proceed with MANUAL rollback?")
+        print("Type 'yes' to confirm, anything else to cancel: ", end="")
+
+        user_input = input().strip().lower()
+
+        if user_input == "yes":
+            return True, "User confirmed - Ready for manual rollback (NOT EXECUTED)"
+        else:
+            return False, "User declined manual rollback"
+    # ================================================================================
+    # GUIDANCE MODE (Step 20)
+    # ================================================================================
+    # Guidance only
+    # No execution authority
+    # No memory mutation
+    # No autonomy
+    # Fail-closed
+
+    def display_guidance_event(self, guidance_event: Any) -> str:
+        """
+        Display guidance event to operator.
+
+        # Guidance only
+        # No execution
+        # Advisory only
+
+        Args:
+            guidance_event: GuidanceEvent from artemis.guidance_mode
+
+        Returns:
+            str - Formatted guidance (human-readable)
+        """
+        if not guidance_event:
+            return "[NO GUIDANCE]\n"
+
+        output = []
+        output.append("=" * 70)
+        output.append(" GUIDANCE — NO ACTION TAKEN")
+        output.append("=" * 70)
+        output.append("")
+        
+        output.append(f"Event ID: {guidance_event.event_id}")
+        output.append(f"Type: {guidance_event.trigger_type.value}")
+        output.append(f"Confidence: {guidance_event.confidence_level.value.upper()}")
+        output.append(f"Time: {guidance_event.timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
+        output.append("")
+        
+        output.append("OBSERVATION:")
+        output.append(f"  {guidance_event.observation}")
+        output.append("")
+        
+        output.append("IMPLICATION:")
+        output.append(f"  {guidance_event.implication}")
+        output.append("")
+        
+        if guidance_event.suggested_actions:
+            output.append("POSSIBLE ACTIONS (advisory only):")
+            for action in guidance_event.suggested_actions:
+                output.append(f"  • {action}")
+            output.append("")
+        
+        if guidance_event.risk_notes:
+            output.append("RISKS & CAVEATS:")
+            for risk in guidance_event.risk_notes:
+                output.append(f"  ⚠ {risk}")
+            output.append("")
+        
+        output.append("=" * 70)
+        output.append("This is ADVISORY only. No action has been taken.")
+        output.append("=" * 70)
+        
+        return "\n".join(output)
+
+    def show_draft_plan(self, draft_plan: Any) -> str:
+        """
+        Display proposed draft plan to operator.
+
+        # Guidance only
+        # Not executed
+        # Operator review required
+
+        Args:
+            draft_plan: PlanDraft from artemis.guidance_mode
+
+        Returns:
+            str - Formatted draft (human-readable)
+        """
+        if not draft_plan:
+            return "[NO DRAFT PLAN]\n"
+
+        output = []
+        output.append("=" * 70)
+        output.append(" PROPOSED DRAFT PLAN — ADVISORY ONLY")
+        output.append("=" * 70)
+        output.append("")
+        
+        output.append(f"Draft ID: {draft_plan.draft_id}")
+        output.append(f"Based on: {draft_plan.guidance_event_id}")
+        output.append("")
+        
+        output.append(f"Title: {draft_plan.title}")
+        output.append(f"Description: {draft_plan.description}")
+        output.append("")
+        
+        output.append("RATIONALE:")
+        output.append(f"  {draft_plan.rationale}")
+        output.append("")
+        
+        if draft_plan.proposed_steps:
+            output.append("PROPOSED STEPS:")
+            for step in draft_plan.proposed_steps:
+                step_order = step.get("order", "?")
+                step_suggestion = step.get("suggestion", "")
+                output.append(f"  {step_order}. {step_suggestion}")
+            output.append("")
+        
+        if draft_plan.risks:
+            output.append("RISKS:")
+            for risk in draft_plan.risks:
+                output.append(f"  ⚠ {risk}")
+            output.append("")
+        
+        output.append("=" * 70)
+        output.append("This plan has NOT been executed.")
+        output.append("Operator approval required before any action.")
+        output.append("=" * 70)
+        
+        return "\n".join(output)
+
+    def guidance_prompt(self, guidance_event: Any, draft_plan: Optional[Any] = None) -> Tuple[str, str]:
+        """
+        Prompt operator for guidance response.
+
+        # Guidance only
+        # No execution
+        # Operator choice required
+
+        Args:
+            guidance_event: GuidanceEvent
+            draft_plan: Optional PlanDraft
+
+        Returns:
+            (response: str, reason: str)
+            response: "dismiss", "ask_more", or "draft_plan"
+        """
+        if not guidance_event:
+            return "dismiss", "No guidance event provided"
+
+        print()
+        print("=" * 70)
+        print(" GUIDANCE RESPONSE OPTIONS")
+        print("=" * 70)
+        print()
+        print("1. Dismiss      - Acknowledge and discard guidance")
+        print("2. Ask More     - Request additional context/analysis")
+        print("3. Draft Plan   - Ask Hestia to draft a plan (if available)")
+        print()
+        print("Choose (1/2/3) or press Enter to dismiss: ", end="")
+        
+        choice = input().strip().lower()
+        
+        if choice in ("1", "dismiss", "d"):
+            return "dismiss", "Operator dismissed guidance"
+        elif choice in ("2", "ask_more", "a"):
+            return "ask_more", "Operator requested more analysis"
+        elif choice in ("3", "draft_plan", "draft"):
+            if draft_plan:
+                return "draft_plan", "Operator approved draft plan review"
+            else:
+                return "dismiss", "No draft plan available"
+        else:
+            return "dismiss", "No response (default dismiss)"

@@ -93,37 +93,54 @@ class ApolloService(Domain):
         Returns deterministic health information or explicit refusals.
         Does NOT provide medical advice, diagnosis, or treatment.
         
+        Artemis enforcement: Domain execution policy enforced at entry
+        
         Args:
             query: User query about health/wellness
             
         Returns:
             String with health information or refusal message
+            
+        Raises:
+            RuntimeError: If Artemis policy blocks domain execution
         """
-        query_lower = query.lower()
-        
-        # Check for forbidden request patterns FIRST (hard refusal)
-        for forbidden_pattern, refusal in self.REFUSAL_PATTERNS.items():
-            if forbidden_pattern in query_lower:
-                return f"{refusal} {self.MEDICAL_DISCLAIMER}"
-        
-        # Check for personalization indicators (hard refusal)
-        personal_indicators = [
-            "my symptoms", "i have", "i'm experiencing", "i've been",
-            "my health", "my condition", "do i have", "should i take",
-            "what should i do", "am i", "could i have"
-        ]
-        
-        for indicator in personal_indicators:
-            if indicator in query_lower:
-                return f"I cannot provide personalized medical advice. Please consult a qualified healthcare provider. {self.MEDICAL_DISCLAIMER}"
-        
-        # Route to appropriate informational handler
-        if any(word in query_lower for word in ["what is", "explain", "define", "tell me about"]):
-            return self._handle_information_request(query_lower)
-        elif any(word in query_lower for word in ["health", "fitness", "exercise", "nutrition", "sleep", "wellbeing", "body", "physiology"]):
-            return self._handle_general_wellness(query_lower)
-        else:
-            return f"Apollo provides health and wellness information. Ask about: fitness, exercise, nutrition, sleep, physiology, or health concepts. {self.MEDICAL_DISCLAIMER}"
+        # Artemis enforcement boundary
+        # Fail-closed by design
+        # Do not bypass
+        self._enforce_domain_policy()
+
+        # Artemis fault containment
+        # Blast radius limited
+        # Fail closed
+        # No recovery without restart
+        try:
+            query_lower = query.lower()
+            
+            # Check for forbidden request patterns FIRST (hard refusal)
+            for forbidden_pattern, refusal in self.REFUSAL_PATTERNS.items():
+                if forbidden_pattern in query_lower:
+                    return f"{refusal} {self.MEDICAL_DISCLAIMER}"
+            
+            # Check for personalization indicators (hard refusal)
+            personal_indicators = [
+                "my symptoms", "i have", "i'm experiencing", "i've been",
+                "my health", "my condition", "do i have", "should i take",
+                "what should i do", "am i", "could i have"
+            ]
+            
+            for indicator in personal_indicators:
+                if indicator in query_lower:
+                    return f"I cannot provide personalized medical advice. Please consult a qualified healthcare provider. {self.MEDICAL_DISCLAIMER}"
+            
+            # Route to appropriate informational handler
+            if any(word in query_lower for word in ["what is", "explain", "define", "tell me about"]):
+                return self._handle_information_request(query_lower)
+            elif any(word in query_lower for word in ["health", "fitness", "exercise", "nutrition", "sleep", "wellbeing", "body", "physiology"]):
+                return self._handle_general_wellness(query_lower)
+            else:
+                return f"Apollo provides health and wellness information. Ask about: fitness, exercise, nutrition, sleep, physiology, or health concepts. {self.MEDICAL_DISCLAIMER}"
+        except Exception as e:
+            self._contain_domain_failure(e)
 
     def _handle_information_request(self, query: str) -> str:
         """Handle general information requests."""

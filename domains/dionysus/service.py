@@ -115,51 +115,68 @@ class DionysusService(Domain):
         Returns deterministic cultural information or explicit refusals.
         Does NOT generate creative content or provide personal advice.
         
+        Artemis enforcement: Domain execution policy enforced at entry
+        
         Args:
             query: User query about music/art/culture/entertainment
             
         Returns:
             String with cultural information or refusal message
+            
+        Raises:
+            RuntimeError: If Artemis policy blocks domain execution
         """
-        query_lower = query.lower()
-        
-        # Check for forbidden creative generation requests FIRST (HARD STOP)
-        creative_indicators = [
-            "write", "create", "generate", "compose", "make me",
-            "give me lyrics", "write a song", "write a poem",
-            "create a story", "make music", "design art"
-        ]
-        
-        for indicator in creative_indicators:
-            if indicator in query_lower:
-                return "I cannot generate creative content (songs, poems, lyrics, stories, art). I provide information about music, art, and culture."
-        
-        # Check for other forbidden request patterns (emotional/substance/lifestyle)
-        for forbidden_pattern, refusal in self.REFUSAL_PATTERNS.items():
-            if forbidden_pattern in query_lower:
-                return refusal
-        
-        # Check for personal recommendation requests (HARD STOP)
-        recommendation_indicators = [
-            "should i listen", "recommend me", "what should i",
-            "best song for", "suggest music", "which art"
-        ]
-        
-        for indicator in recommendation_indicators:
-            if indicator in query_lower:
-                return "I cannot make personal recommendations. I provide information about music genres, art styles, and cultural concepts."
-        
-        # Route to appropriate informational handler (vibe FIRST to avoid "art" in "party")
-        if any(word in query_lower for word in ["party", "vibe", "atmosphere", "mood"]):
-            return self._handle_vibe_query(query_lower)
-        elif any(word in query_lower for word in ["music", "genre", "song", "band", "artist"]):
-            return self._handle_music_query(query_lower)
-        elif any(word in query_lower for word in ["art", "painting", "style"]):
-            return self._handle_art_query(query_lower)
-        elif any(word in query_lower for word in ["culture", "festival", "theater", "cinema", "entertainment"]):
-            return self._handle_culture_query(query_lower)
-        else:
-            return "Dionysus provides information about music, art, culture, and entertainment. Ask about: genres, art styles, cultural concepts, or party vibes."
+        # Artemis enforcement boundary
+        # Fail-closed by design
+        # Do not bypass
+        self._enforce_domain_policy()
+
+        # Artemis fault containment
+        # Blast radius limited
+        # Fail closed
+        # No recovery without restart
+        try:
+            query_lower = query.lower()
+            
+            # Check for forbidden creative generation requests FIRST (HARD STOP)
+            creative_indicators = [
+                "write", "create", "generate", "compose", "make me",
+                "give me lyrics", "write a song", "write a poem",
+                "create a story", "make music", "design art"
+            ]
+            
+            for indicator in creative_indicators:
+                if indicator in query_lower:
+                    return "I cannot generate creative content (songs, poems, lyrics, stories, art). I provide information about music, art, and culture."
+            
+            # Check for other forbidden request patterns (emotional/substance/lifestyle)
+            for forbidden_pattern, refusal in self.REFUSAL_PATTERNS.items():
+                if forbidden_pattern in query_lower:
+                    return refusal
+            
+            # Check for personal recommendation requests (HARD STOP)
+            recommendation_indicators = [
+                "should i listen", "recommend me", "what should i",
+                "best song for", "suggest music", "which art"
+            ]
+            
+            for indicator in recommendation_indicators:
+                if indicator in query_lower:
+                    return "I cannot make personal recommendations. I provide information about music genres, art styles, and cultural concepts."
+            
+            # Route to appropriate informational handler (vibe FIRST to avoid "art" in "party")
+            if any(word in query_lower for word in ["party", "vibe", "atmosphere", "mood"]):
+                return self._handle_vibe_query(query_lower)
+            elif any(word in query_lower for word in ["music", "genre", "song", "band", "artist"]):
+                return self._handle_music_query(query_lower)
+            elif any(word in query_lower for word in ["art", "painting", "style"]):
+                return self._handle_art_query(query_lower)
+            elif any(word in query_lower for word in ["culture", "festival", "theater", "cinema", "entertainment"]):
+                return self._handle_culture_query(query_lower)
+            else:
+                return "Dionysus provides information about music, art, culture, and entertainment. Ask about: genres, art styles, cultural concepts, or party vibes."
+        except Exception as e:
+            self._contain_domain_failure(e)
 
     def _handle_music_query(self, query: str) -> str:
         """Handle music information requests."""

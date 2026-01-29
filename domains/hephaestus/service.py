@@ -82,32 +82,49 @@ class HephaestusService(Domain):
     def handle(self, query: str) -> str:
         """Process code reasoning query.
         
+        Artemis enforcement: Domain execution policy enforced at entry
+        
         Args:
             query: User question about code, design, debugging, etc.
             
         Returns:
             str: Deterministic reasoning and suggestions
+            
+        Raises:
+            RuntimeError: If Artemis policy blocks domain execution
         """
-        query_lower = query.lower()
+        # Artemis enforcement boundary
+        # Fail-closed by design
+        # Do not bypass
+        self._enforce_domain_policy()
 
-        # Debug assistance
-        if "debug" in query_lower or "error" in query_lower or "crash" in query_lower:
-            return self._handle_debug(query)
+        # Artemis fault containment
+        # Blast radius limited
+        # Fail closed
+        # No recovery without restart
+        try:
+            query_lower = query.lower()
 
-        # Design guidance
-        if "design" in query_lower or "architecture" in query_lower or "pattern" in query_lower:
-            return self._handle_design(query)
+            # Debug assistance
+            if "debug" in query_lower or "error" in query_lower or "crash" in query_lower:
+                return self._handle_debug(query)
 
-        # Refactoring suggestions
-        if "refactor" in query_lower or "improve" in query_lower or "clean" in query_lower:
-            return self._handle_refactoring(query)
+            # Design guidance
+            if "design" in query_lower or "architecture" in query_lower or "pattern" in query_lower:
+                return self._handle_design(query)
 
-        # Code review
-        if "review" in query_lower or "quality" in query_lower or "best" in query_lower:
-            return self._handle_review(query)
+            # Refactoring suggestions
+            if "refactor" in query_lower or "improve" in query_lower or "clean" in query_lower:
+                return self._handle_refactoring(query)
 
-        # Default: general code reasoning
-        return self._default_response()
+            # Code review
+            if "review" in query_lower or "quality" in query_lower or "best" in query_lower:
+                return self._handle_review(query)
+
+            # Default: general code reasoning
+            return self._default_response()
+        except Exception as e:
+            self._contain_domain_failure(e)
 
     def _handle_debug(self, query: str) -> str:
         """Provide debugging assistance."""

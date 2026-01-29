@@ -85,32 +85,49 @@ class HermesService(Domain):
         Returns deterministic guidance for text transformation.
         Does NOT perform actual transformation (no LLM).
         
+        Artemis enforcement: Domain execution policy enforced at entry
+        
         Args:
             query: User query requesting text transformation
             
         Returns:
             String with transformation guidance or error message
+            
+        Raises:
+            RuntimeError: If Artemis policy blocks domain execution
         """
-        query_lower = query.lower()
-        
-        # Extract text to transform (look for patterns)
-        # If no clear text is provided, return error
-        if not self._has_transformable_text(query):
-            return "Error: No text provided for transformation. Please provide the text you want to transform."
-        
-        # Route to appropriate transformation handler
-        if any(word in query_lower for word in ["rewrite", "rewriting"]):
-            return self._handle_rewrite(query_lower)
-        elif any(word in query_lower for word in ["rephrase", "rephrasing"]):
-            return self._handle_rephrase(query_lower)
-        elif any(word in query_lower for word in ["summarize", "summary"]):
-            return self._handle_summarize(query_lower)
-        elif any(word in query_lower for word in ["simplify", "simpler"]):
-            return self._handle_simplify(query_lower)
-        elif any(word in query_lower for word in ["clarify", "clearer", "clear up"]):
-            return self._handle_clarify(query_lower)
-        else:
-            return "Text Transformation: Hermes handles rewriting, rephrasing, summarizing, simplifying, and clarifying text. Specify which transformation you need."
+        # Artemis enforcement boundary
+        # Fail-closed by design
+        # Do not bypass
+        self._enforce_domain_policy()
+
+        # Artemis fault containment
+        # Blast radius limited
+        # Fail closed
+        # No recovery without restart
+        try:
+            query_lower = query.lower()
+            
+            # Extract text to transform (look for patterns)
+            # If no clear text is provided, return error
+            if not self._has_transformable_text(query):
+                return "Error: No text provided for transformation. Please provide the text you want to transform."
+            
+            # Route to appropriate transformation handler
+            if any(word in query_lower for word in ["rewrite", "rewriting"]):
+                return self._handle_rewrite(query_lower)
+            elif any(word in query_lower for word in ["rephrase", "rephrasing"]):
+                return self._handle_rephrase(query_lower)
+            elif any(word in query_lower for word in ["summarize", "summary"]):
+                return self._handle_summarize(query_lower)
+            elif any(word in query_lower for word in ["simplify", "simpler"]):
+                return self._handle_simplify(query_lower)
+            elif any(word in query_lower for word in ["clarify", "clearer", "clear up"]):
+                return self._handle_clarify(query_lower)
+            else:
+                return "Text Transformation: Hermes handles rewriting, rephrasing, summarizing, simplifying, and clarifying text. Specify which transformation you need."
+        except Exception as e:
+            self._contain_domain_failure(e)
 
     def _has_transformable_text(self, query: str) -> bool:
         """Check if query contains text to transform.

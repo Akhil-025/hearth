@@ -13,6 +13,7 @@ from typing import Optional
 # from domains.dionysus.service import DionysusService
 
 from core.kernel import HearthKernel, KernelConfig
+from core.bootstrap import bootstrap_hearth
 from hestia.agent import HestiaAgent
 
 
@@ -47,15 +48,65 @@ class HearthApplication:
     
     async def initialize(self) -> None:
         """Initialize minimal execution spine."""
+        # ARTEMIS FIRST: Bootstrap security authority (passive during boot)
+        artemis = bootstrap_hearth()
+        
+        # ────────────────────────────────────────────────────────────────
+        # BOOT GATE: Integrity verification at startup
+        # ────────────────────────────────────────────────────────────────
+        # Artemis integrity gate
+        # Fail closed
+        # No execution past this point
+        
+        try:
+            from pathlib import Path
+            is_valid, mismatches = artemis.verify_integrity()
+            
+            if not is_valid:
+                # Integrity check failed - Artemis escalated state
+                artemis_state = artemis.get_state().name
+                print(f"[Artemis] BOOT GATE: Integrity verification failed")
+                print(f"[Artemis] State escalated to: {artemis_state}")
+                
+                for mismatch in mismatches:
+                    print(f"  - {mismatch['file']}: {mismatch['status']}")
+                
+                # Fail closed: Abort boot if state != SECURE or DEGRADED
+                if artemis_state not in ["SECURE", "DEGRADED"]:
+                    raise RuntimeError(
+                        f"Boot aborted: Artemis state {artemis_state} "
+                        "disallows execution (integrity gate failed)"
+                    )
+        except RuntimeError as e:
+            # Integrity verification failed catastrophically
+            raise RuntimeError(f"Boot integrity gate failed: {e}")
+        
+        # Log security state (passive observation only)
+        from artemis.boundary import (
+            POLICY_SECURE, POLICY_DEGRADED,
+            POLICY_COMPROMISED, POLICY_LOCKDOWN
+        )
+        policy_name_map = {
+            id(POLICY_SECURE): "SECURE",
+            id(POLICY_DEGRADED): "DEGRADED",
+            id(POLICY_COMPROMISED): "COMPROMISED",
+            id(POLICY_LOCKDOWN): "LOCKDOWN",
+        }
+        current_policy = artemis.current_policy()
+        policy_name = policy_name_map.get(id(current_policy), "UNKNOWN")
+        
+        print(f"[Artemis] Security state: {artemis.get_state().name}")
+        print(f"[Artemis] Active policy: {policy_name}")
+        
         config = self.load_configuration()
-        self.kernel = HearthKernel(config)
+        self.kernel = HearthKernel(config, artemis=artemis)
         
         # Create agent with optional LLM and memory
         agent_config = {
             "enable_llm": self.enable_llm,
             "enable_memory": self.enable_memory
         }
-        self.agent = HestiaAgent(agent_config)
+        self.agent = HestiaAgent(agent_config, kernel=self.kernel)
         
         # Initialize agent (will setup LLM if enabled)
         await self.agent.initialize()
